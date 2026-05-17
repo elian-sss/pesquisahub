@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>PesquisaHub — Pitch</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap"/>
+<script src="deck-stage.js"></script>
+<style>
+  :root {
+    --primary: #0F4C5C; --primary-deep: #0A3845; --primary-tint: #E8F0F2;
+    --accent: #E8B339; --accent-tint: #FBF1D9;
+    --bg: #FAFAF7; --ink: #1A1A1A; --ink-2: #404040; --muted: #6B7280;
+    --line: #E8E6DF; --ok: #10B981;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #1A1A1A; font-family: 'Inter', system-ui, sans-serif; }
+  deck-stage > section {
+    background: var(--bg); color: var(--ink);
+    padding: 96px 120px;
+    display: flex; flex-direction: column; gap: 32px;
+    position: relative; overflow: hidden;
+  }
+  .serif { font-family: 'Fraunces', Georgia, serif; letter-spacing: -0.02em; font-feature-settings: "ss01"; }
+  .mono { font-family: 'JetBrains Mono', monospace; }
+  .tnum { font-variant-numeric: tabular-nums; }
+  .eyebrow {
+    font-size: 14px; letter-spacing: 0.16em; text-transform: uppercase;
+    color: var(--primary); font-weight: 600;
+    display: flex; align-items: center; gap: 12px;
+  }
+  .eyebrow::before { content: ''; width: 32px; height: 2px; background: var(--accent); }
+  h1.serif { font-size: 92px; font-weight: 500; line-height: 1.02; margin: 0; }
+  h2.serif { font-size: 56px; font-weight: 500; line-height: 1.08; margin: 0; }
+  h3.serif { font-size: 32px; font-weight: 600; line-height: 1.15; margin: 0; }
+  p.lead { font-size: 22px; line-height: 1.5; color: var(--ink-2); max-width: 920px; margin: 0; text-wrap: pretty; }
+  p.body { font-size: 18px; line-height: 1.6; color: var(--ink-2); margin: 0; text-wrap: pretty; }
+
+  /* Slide 1 — Cover */
+  .cover { background: var(--primary); color: #fff; }
+  .cover::after {
+    content: ''; position: absolute; right: -200px; bottom: -200px;
+    width: 600px; height: 600px;
+    background: radial-gradient(circle, rgba(232, 179, 57, 0.18) 0%, transparent 65%);
+    border-radius: 50%;
+  }
+  .cover .eyebrow { color: var(--accent); }
+  .cover .eyebrow::before { background: var(--accent); }
+  .brand-row { display: flex; align-items: center; gap: 14px; }
+  .mark {
+    width: 44px; height: 44px; border-radius: 11px; background: rgba(255,255,255,0.12);
+    display: grid; place-items: center; position: relative;
+  }
+  .mark::after {
+    content: ''; position: absolute; right: -4px; bottom: -4px;
+    width: 14px; height: 14px; border-radius: 50%; background: var(--accent);
+    border: 3px solid var(--primary);
+  }
+  .meta-row { display: flex; gap: 56px; margin-top: auto; }
+  .meta-item { display: flex; flex-direction: column; gap: 4px; }
+  .meta-label { font-size: 13px; opacity: 0.6; letter-spacing: 0.08em; text-transform: uppercase; font-weight: 600; }
+  .meta-val { font-family: 'Fraunces', serif; font-size: 22px; font-weight: 500; }
+
+  /* Generic */
+  .col { display: flex; flex-direction: column; }
+  .row { display: flex; }
+  .three-col { display: grid; grid-template-columns: repeat(3, 1fr); gap: 32px; flex: 1; min-height: 0; }
+  .pillar {
+    background: #fff; border: 1px solid var(--line); border-radius: 18px;
+    padding: 36px 32px; display: flex; flex-direction: column; gap: 16px;
+    position: relative; overflow: hidden;
+  }
+  .pillar-num {
+    font-family: 'Fraunces', serif; font-size: 80px; font-weight: 400;
+    color: var(--primary-tint); line-height: 0.9; letter-spacing: -0.03em;
+    position: absolute; top: 18px; right: 24px;
+  }
+  .pillar-icon {
+    width: 56px; height: 56px; border-radius: 14px;
+    background: var(--primary-tint); color: var(--primary);
+    display: grid; place-items: center;
+  }
+  .pillar h3 { font-size: 26px; }
+  .pillar p { font-size: 16px; line-height: 1.55; color: var(--ink-2); margin: 0; flex: 1; }
+  .pillar-foot {
+    margin-top: auto; padding-top: 16px; border-top: 1px solid var(--line);
+    font-family: 'JetBrains Mono', monospace; font-size: 12px;
+    color: var(--muted); letter-spacing: 0.02em;
+  }
+
+  /* Two-column with frame */
+  .split { display: grid; grid-template-columns: 1fr 1.1fr; gap: 64px; flex: 1; min-height: 0; align-items: center; }
+  .frame {
+    border-radius: 18px; overflow: hidden; box-shadow: 0 30px 60px rgba(15,23,42,0.12), 0 0 0 1px var(--line);
+    background: #fff; height: 100%; max-height: 760px;
+  }
+  .frame iframe { width: 100%; height: 100%; border: 0; display: block; }
+
+  /* Roles slide */
+  .role-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+  .role-card {
+    background: #fff; border: 1px solid var(--line); border-radius: 14px;
+    padding: 24px;
+  }
+  .role-pill {
+    display: inline-block; padding: 4px 12px; border-radius: 999px;
+    font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase;
+    background: var(--primary); color: #fff; margin-bottom: 12px;
+  }
+  .role-card h4 { font-family: 'Fraunces', serif; font-size: 22px; font-weight: 600; margin: 0 0 8px; }
+  .role-card ul { margin: 12px 0 0; padding-left: 18px; font-size: 15px; color: var(--ink-2); line-height: 1.7; }
+  .role-card li::marker { color: var(--accent); }
+
+  /* Stack chips */
+  .chips { display: flex; flex-wrap: wrap; gap: 10px; }
+  .chip {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 10px 16px; background: #fff; border: 1px solid var(--line);
+    border-radius: 999px; font-size: 14px; font-weight: 500;
+  }
+  .chip-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--primary); }
+  .chip.accent .chip-dot { background: var(--accent); }
+  .chip.ok .chip-dot { background: var(--ok); }
+
+  /* Stat row */
+  .stat-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 28px; margin-top: auto; padding-top: 32px; border-top: 1px solid var(--line); }
+  .stat .stat-num { font-family: 'Fraunces', serif; font-size: 48px; font-weight: 500; color: var(--primary); letter-spacing: -0.02em; }
+  .stat .stat-label { font-size: 14px; color: var(--muted); margin-top: 2px; }
+
+  /* Closing */
+  .closing { background: var(--primary); color: #fff; }
+  .closing .serif { color: #fff; }
+  .closing .accent-em { color: var(--accent); font-style: italic; }
+  .closing::before {
+    content: ''; position: absolute; left: -150px; top: -150px;
+    width: 500px; height: 500px;
+    background: radial-gradient(circle, rgba(232, 179, 57, 0.14) 0%, transparent 65%);
+    border-radius: 50%;
+  }
+
+  /* Mongo block */
+  .mongo-bar {
+    display: grid; grid-template-columns: 220px 1fr; gap: 28px;
+    background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 22px 24px;
+  }
+  .mongo-bar h4 { font-family: 'Fraunces', serif; font-weight: 600; font-size: 18px; margin: 0 0 4px; }
+  .mongo-bar p { font-size: 14px; line-height: 1.55; color: var(--ink-2); margin: 0; }
+  .mongo-bar .mono { font-size: 11.5px; color: var(--muted); margin-top: 8px; display: block; }
+</style>
+</head>
+<body>
+<deck-stage>
+
+  <!-- ===== 1. Cover ===== -->
+  <section class="cover">
+    <div class="brand-row">
+      <div class="mark">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19V5l8 14L20 5v14"/></svg>
+      </div>
+      <div>
+        <div style="font-family: 'Fraunces', serif; font-size: 22px; font-weight: 600;">PesquisaHub</div>
+        <div style="font-size: 12px; opacity: 0.7; letter-spacing: 0.08em; text-transform: uppercase;">Pró-Reitoria de Pesquisa · UFPA</div>
+      </div>
+    </div>
+
+    <div style="margin: auto 0;">
+      <div class="eyebrow">Apresentação de banca · 2026</div>
+      <h1 class="serif" style="margin-top: 24px;">A pesquisa<br/>da universidade,<br/><em style="color: var(--accent); font-style: italic;">em um só lugar.</em></h1>
+      <p class="lead" style="color: rgba(255,255,255,0.85); margin-top: 32px; max-width: 720px;">
+        Plataforma web para gerenciamento de projetos de Iniciação Científica, P&amp;D Embrapii e Extensão — do cadastro à prestação de contas.
+      </p>
+    </div>
+
+    <div class="meta-row">
+      <div class="meta-item"><span class="meta-label">Stack</span><span class="meta-val">Node.js · React · MongoDB</span></div>
+      <div class="meta-item"><span class="meta-label">Perfis</span><span class="meta-val">Admin · Coordenador · Bolsista</span></div>
+      <div class="meta-item"><span class="meta-label">Status</span><span class="meta-val">Protótipo navegável</span></div>
+    </div>
+  </section>
+
+  <!-- ===== 2. O problema ===== -->
+  <section>
+    <div class="eyebrow">O problema</div>
+    <h2 class="serif">A gestão dos projetos de pesquisa<br/>está espalhada em planilhas, e-mails e PDFs.</h2>
+
+    <div class="split" style="margin-top: 16px;">
+      <div class="col" style="gap: 20px; align-self: center;">
+        <p class="lead">
+          Coordenadores não têm visão única dos seus projetos. Bolsistas registram horas em formulários paralelos. A PROPESP só vê tudo no fim, quando precisa relatar para Embrapii, CNPq, FAPESPA e CAPES.
+        </p>
+        <div class="chips" style="margin-top: 12px;">
+          <span class="chip"><span class="chip-dot"></span>Sem fonte única da verdade</span>
+          <span class="chip accent"><span class="chip-dot"></span>Indicadores institucionais manuais</span>
+          <span class="chip"><span class="chip-dot"></span>Prestações de conta sob pressão</span>
+        </div>
+      </div>
+      <div class="frame">
+        <iframe src="PesquisaHub.html#role=admin&screen=dashboard" loading="lazy"></iframe>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== 3. Solução ===== -->
+  <section>
+    <div class="eyebrow">A solução</div>
+    <h2 class="serif">Um sistema, três experiências.</h2>
+    <p class="lead">Cada perfil enxerga só o que precisa — com permissões e dados ajustados ao seu papel.</p>
+
+    <div class="role-row" style="margin-top: 16px;">
+      <div class="role-card">
+        <span class="role-pill">Admin</span>
+        <h4>Visão institucional</h4>
+        <p class="body" style="font-size: 15px;">PROPESP acompanha todos os projetos em um só painel.</p>
+        <ul>
+          <li>Indicadores agregados</li>
+          <li>Relatórios por agência</li>
+          <li>Gestão de usuários</li>
+        </ul>
+      </div>
+      <div class="role-card" style="border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-tint);">
+        <span class="role-pill" style="background: var(--accent); color: var(--ink);">Coordenador</span>
+        <h4>Seus projetos, sua equipe</h4>
+        <p class="body" style="font-size: 15px;">Professores cadastram, gerenciam e aprovam.</p>
+        <ul>
+          <li>Cadastro de projetos</li>
+          <li>Aprovação de horas</li>
+          <li>Cronograma e metas</li>
+        </ul>
+      </div>
+      <div class="role-card">
+        <span class="role-pill" style="background: var(--ink-2);">Bolsista</span>
+        <h4>Foco no trabalho diário</h4>
+        <p class="body" style="font-size: 15px;">Bolsistas registram, atualizam e entregam.</p>
+        <ul>
+          <li>Registro de horas</li>
+          <li>Tarefas atribuídas</li>
+          <li>Upload de arquivos</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== 4. Telas-chave ===== -->
+  <section>
+    <div class="eyebrow">Protótipo navegável</div>
+    <h2 class="serif">Cadastro com campos dinâmicos<br/>por tipo de projeto.</h2>
+
+    <div class="split" style="margin-top: 16px;">
+      <div class="col" style="gap: 20px; align-self: center;">
+        <p class="lead">
+          Um único formulário em 5 passos atende três realidades distintas. Para <strong>P&amp;D Embrapii</strong>, aparecem TRL e contrapartida. Para <strong>Extensão</strong>, público-alvo e municípios. Para <strong>IC</strong>, modalidade da bolsa e plano de trabalho.
+        </p>
+        <div class="chips">
+          <span class="chip ok"><span class="chip-dot"></span>1 formulário · 3 tipos</span>
+          <span class="chip accent"><span class="chip-dot"></span>Validação por etapa</span>
+          <span class="chip"><span class="chip-dot"></span>Salvar como rascunho</span>
+        </div>
+      </div>
+      <div class="frame">
+        <iframe src="PesquisaHub.html#role=coord&screen=newProject" loading="lazy"></iframe>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== 5. Por que MongoDB ===== -->
+  <section>
+    <div class="eyebrow">Justificativa técnica</div>
+    <h2 class="serif">Por que <em style="color: var(--primary); font-style: italic;">MongoDB</em>?</h2>
+    <p class="lead">Três pilares justificam a escolha do banco para este domínio.</p>
+
+    <div class="three-col" style="margin-top: 24px;">
+      <div class="pillar">
+        <span class="pillar-num">01</span>
+        <div class="pillar-icon">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+        </div>
+        <h3>Modelagem<br/>híbrida</h3>
+        <p>Cada tipo de projeto — P&amp;D, IC, Extensão — tem campos próprios. O schema flexível do Mongo absorve essas variações sem migrations a cada novo edital.</p>
+        <div class="pillar-foot">schema-on-read · sem ALTER TABLE</div>
+      </div>
+
+      <div class="pillar">
+        <span class="pillar-num">02</span>
+        <div class="pillar-icon">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/></svg>
+        </div>
+        <h3>Hierarquia<br/>de dados</h3>
+        <p>Projeto → Metas → Entregas → Horas é uma árvore natural. Documentos aninhados servem essa estrutura em uma única consulta — sem JOINs em cascata.</p>
+        <div class="pillar-foot">embedded docs · 1 query, todo o contexto</div>
+      </div>
+
+      <div class="pillar">
+        <span class="pillar-num">03</span>
+        <div class="pillar-icon">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+        </div>
+        <h3>Performance<br/>com Node.js</h3>
+        <p>Driver oficial nativo, JSON no banco e no front. Menos serialização, menos ORM, menos camadas — Express + Mongoose entregam respostas em milissegundos.</p>
+        <div class="pillar-foot">JSON end-to-end · driver oficial maduro</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== 6. Próximos passos ===== -->
+  <section class="closing">
+    <div class="eyebrow" style="color: var(--accent);">Próximos passos</div>
+    <h2 class="serif" style="margin-top: 8px;">Do protótipo<br/><span class="accent-em">à produção.</span></h2>
+
+    <div class="three-col" style="margin-top: 32px; flex: none;">
+      <div style="background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.14); border-radius: 14px; padding: 24px;">
+        <div style="font-family: 'Fraunces', serif; font-size: 18px; font-weight: 600; color: var(--accent); margin-bottom: 8px;">Sprint 1 — 3 sem.</div>
+        <div style="font-size: 16px; line-height: 1.55;">Backend Node.js + Mongo, autenticação SIGAA, CRUD de projetos.</div>
+      </div>
+      <div style="background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.14); border-radius: 14px; padding: 24px;">
+        <div style="font-family: 'Fraunces', serif; font-size: 18px; font-weight: 600; color: var(--accent); margin-bottom: 8px;">Sprint 2 — 4 sem.</div>
+        <div style="font-size: 16px; line-height: 1.55;">Cronograma, registro de horas, fluxo de aprovação, mobile.</div>
+      </div>
+      <div style="background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.14); border-radius: 14px; padding: 24px;">
+        <div style="font-family: 'Fraunces', serif; font-size: 18px; font-weight: 600; color: var(--accent); margin-bottom: 8px;">Sprint 3 — 3 sem.</div>
+        <div style="font-size: 16px; line-height: 1.55;">Relatórios, exportações Embrapii/CNPq, piloto com 2 unidades.</div>
+      </div>
+    </div>
+
+    <div style="margin-top: auto; padding-top: 32px; display: flex; justify-content: space-between; align-items: flex-end; opacity: 0.85;">
+      <div style="font-family: 'Fraunces', serif; font-size: 24px; font-weight: 500;">Obrigado.</div>
+      <div style="font-size: 13px; opacity: 0.6; font-family: 'JetBrains Mono', monospace;">PesquisaHub · 2026</div>
+    </div>
+  </section>
+
+</deck-stage>
+</body>
+</html>

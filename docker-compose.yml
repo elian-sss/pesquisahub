@@ -1,0 +1,16 @@
+services:
+  mongo:
+    image: mongo:7
+    container_name: pesquisahub-mongo
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: pesquisahub
+      MONGO_INITDB_ROOT_PASSWORD: pesquisahub
+      MONGO_INITDB_DATABASE: pesquisahub
+    volumes:
+      - pesquisahub_mongo_data:/data/db
+
+volumes:
+  pesquisahub_mongo_data:

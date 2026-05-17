@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>PesquisaHub — Canvas</title>
+<style>
+  body, html { margin: 0; padding: 0; height: 100%; background: #f0eee9; font-family: 'Inter', system-ui, sans-serif; }
+</style>
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel" src="design-canvas.jsx"></script>
+<script type="text/babel">
+  const { useState, useEffect, useRef } = React;
+
+  // Each artboard renders the full app via iframe at a specific deep-link state
+  function ScreenFrame({ src, w = 1280, h = 820 }) {
+    return (
+      <iframe src={src} style={{
+        width: w, height: h, border: 0,
+        background: '#FAFAF7',
+        pointerEvents: 'auto',
+      }}/>
+    );
+  }
+
+  function MobileFrame({ src }) {
+    return (
+      <div style={{ width: 380, height: 760, padding: 12, background: '#1A1A1A', borderRadius: 32, boxShadow: '0 30px 60px rgba(0,0,0,0.18)' }}>
+        <iframe src={src} style={{ width: 356, height: 736, border: 0, borderRadius: 22, background: '#FAFAF7' }}/>
+      </div>
+    );
+  }
+
+  const BASE = './PesquisaHub.html';
+  const url = (role, screen, project) => `${BASE}#role=${role}&screen=${screen || 'dashboard'}${project ? `&project=${project}` : ''}`;
+
+  function App() {
+    return (
+      <DesignCanvas>
+        <DCSection id="login" title="01 · Acesso" subtitle="Tela de login com acesso rápido por perfil">
+          <DCArtboard id="login-d" label="Login · Desktop" width={1280} height={820}>
+            <ScreenFrame src={url('login', 'login')} w={1280} h={820}/>
+          </DCArtboard>
+          <DCArtboard id="login-m" label="Login · Mobile" width={380} height={760}>
+            <MobileFrame src={url('login', 'login')}/>
+          </DCArtboard>
+        </DCSection>
+
+        <DCSection id="dashboards" title="02 · Painéis por perfil" subtitle="O mesmo sistema, três experiências distintas">
+          <DCArtboard id="d-admin" label="Admin · institucional" width={1280} height={900}>
+            <ScreenFrame src={url('admin', 'dashboard')} w={1280} h={900}/>
+          </DCArtboard>
+          <DCArtboard id="d-coord" label="Coordenador · meus projetos" width={1280} height={900}>
+            <ScreenFrame src={url('coord', 'dashboard')} w={1280} h={900}/>
+          </DCArtboard>
+          <DCArtboard id="d-bols" label="Bolsista · minhas tarefas" width={1280} height={900}>
+            <ScreenFrame src={url('bolsista', 'dashboard')} w={1280} h={900}/>
+          </DCArtboard>
+          <DCArtboard id="d-bols-m" label="Bolsista · mobile" width={380} height={760}>
+            <MobileFrame src={url('bolsista', 'dashboard')}/>
+          </DCArtboard>
+        </DCSection>
+
+        <DCSection id="projects" title="03 · Projetos" subtitle="Listagem com filtros e detalhe completo">
+          <DCArtboard id="p-list" label="Lista de projetos" width={1280} height={820}>
+            <ScreenFrame src={url('admin', 'projects')} w={1280} h={820}/>
+          </DCArtboard>
+          <DCArtboard id="p-detail" label="Detalhe — Visão geral" width={1280} height={1100}>
+            <ScreenFrame src={url('coord', 'projectDetail', 'p1')} w={1280} h={1100}/>
+          </DCArtboard>
+          <DCArtboard id="p-list-m" label="Lista · mobile" width={380} height={760}>
+            <MobileFrame src={url('admin', 'projects')}/>
+          </DCArtboard>
+        </DCSection>
+
+        <DCSection id="schedule-hours" title="04 · Cronograma & Horas" subtitle="Gestão temporal do trabalho de pesquisa">
+          <DCArtboard id="sch" label="Cronograma" width={1280} height={820}>
+            <ScreenFrame src={url('coord', 'schedule')} w={1280} h={820}/>
+          </DCArtboard>
+          <DCArtboard id="hr-bols" label="Horas · Bolsista" width={1280} height={1100}>
+            <ScreenFrame src={url('bolsista', 'hours')} w={1280} h={1100}/>
+          </DCArtboard>
+          <DCArtboard id="hr-coord" label="Horas · aprovação (Coord.)" width={1280} height={1100}>
+            <ScreenFrame src={url('coord', 'hours')} w={1280} h={1100}/>
+          </DCArtboard>
+        </DCSection>
+
+        <DCSection id="forms" title="05 · Cadastro multi-step" subtitle="Campos dinâmicos por tipo de projeto — destaque do sistema">
+          <DCArtboard id="np-1" label="Passo 1 · Tipo do projeto" width={1100} height={820}>
+            <ScreenFrame src={url('coord', 'newProject')} w={1100} h={820}/>
+          </DCArtboard>
+          <DCArtboard id="np-3" label="Passo 3 · Metadados (P&D)" width={1100} height={820}>
+            <ScreenFrame src={url('coord', 'newProject', 'step3')} w={1100} h={820}/>
+          </DCArtboard>
+        </DCSection>
+
+        <DCSection id="reports" title="06 · Relatórios" subtitle="Para o Admin demonstrar o sistema institucionalmente">
+          <DCArtboard id="rep" label="Relatórios · Admin" width={1280} height={1100}>
+            <ScreenFrame src={url('admin', 'reports')} w={1280} h={1100}/>
+          </DCArtboard>
+        </DCSection>
+      </DesignCanvas>
+    );
+  }
+
+  ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+</body>
+</html>

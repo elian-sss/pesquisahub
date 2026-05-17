@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>PesquisaHub — Sistema de Gestão de Projetos Acadêmicos</title>
+  <link rel="stylesheet" href="styles.css"/>
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+  <script crossorigin src="https://unpkg.com/prop-types@15.8.1/prop-types.min.js"></script>
+  <script crossorigin src="https://cdn.jsdelivr.net/npm/recharts@2.12.7/umd/Recharts.min.js"></script>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="text/babel" src="data.jsx"></script>
+  <script type="text/babel" src="shell.jsx"></script>
+  <script type="text/babel" src="screens-1.jsx"></script>
+  <script type="text/babel" src="screens-2.jsx"></script>
+  <script type="text/babel" src="screens-3.jsx"></script>
+  <script type="text/babel">
+    const { useState, useEffect } = React;
+
+    function parseHash() {
+      const h = (window.location.hash || '').replace(/^#/, '');
+      const params = {};
+      h.split('&').forEach(kv => {
+        const [k, v] = kv.split('=');
+        if (k) params[decodeURIComponent(k)] = decodeURIComponent(v || '');
+      });
+      return params;
+    }
+
+    function App() {
+      const initial = parseHash();
+      const initialAuthed = initial.role && initial.role !== 'login';
+      const [authed, setAuthed] = useState(!!initialAuthed);
+      const [role, setRole] = useState(initialAuthed ? initial.role : 'coord');
+      const [screen, setScreen] = useState(initialAuthed ? (initial.screen || 'dashboard') : 'dashboard');
+      const [activeProject, setActiveProject] = useState(initial.project || null);
+
+      useEffect(() => {
+        const onLogout = () => { setAuthed(false); setScreen('dashboard'); };
+        window.addEventListener('logout', onLogout);
+        return () => window.removeEventListener('logout', onLogout);
+      }, []);
+
+      const handleLogin = (r) => {
+        setRole(r);
+        setAuthed(true);
+        setScreen('dashboard');
+        pushToast(`Bem-vindo(a)! Você entrou como ${r === 'admin' ? 'Admin' : r === 'coord' ? 'Coordenador' : 'Bolsista'}.`);
+      };
+
+      const goToProject = (id) => { setActiveProject(id); setScreen('projectDetail'); };
+
+      if (!authed) return (<><LoginScreen onLogin={handleLogin}/><ToastHost/></>);
+
+      const titles = {
+        dashboard: { title: 'Painel', sub: role === 'admin' ? 'Visão institucional · PROPESP' : role === 'coord' ? 'Seus projetos e pendências' : 'Suas tarefas e horas' },
+        projects: { title: 'Projetos', sub: role === 'admin' ? 'Todos os projetos da instituição' : role === 'coord' ? 'Projetos sob sua coordenação' : 'Projetos dos quais você participa' },
+        projectDetail: { title: 'Detalhe do projeto', sub: 'Visão geral, cronograma, horas e equipe' },
+        schedule: { title: 'Cronograma', sub: 'Metas e entregas em andamento' },
+        hours: { title: 'Registro de horas', sub: role === 'coord' ? 'Aprove os registros da sua equipe' : 'Acompanhe e registre suas horas de pesquisa' },
+        reports: { title: 'Relatórios', sub: 'Exportações, indicadores e análises' },
+        newProject: { title: 'Novo projeto', sub: 'Cadastro em 5 passos' },
+        users: { title: 'Usuários', sub: 'Gestão de pessoas e permissões' },
+      };
+      const t = titles[screen] || titles.dashboard;
+
+      const showHeader = screen !== 'newProject';
+
+      return (
+        <div className="app">
+          <Sidebar screen={screen} setScreen={(s) => { setScreen(s); setActiveProject(null); }} role={role}/>
+          <div className="main">
+            {showHeader && <Topbar title={t.title} subtitle={t.sub} role={role} setRole={setRole}/>}
+            <div className="content">
+              {screen === 'dashboard' && role === 'admin' && <AdminDashboard goToProject={goToProject} setScreen={setScreen}/>}
+              {screen === 'dashboard' && role === 'coord' && <CoordDashboard goToProject={goToProject} setScreen={setScreen}/>}
+              {screen === 'dashboard' && role === 'bolsista' && <BolsistaDashboard goToProject={goToProject} setScreen={setScreen}/>}
+              {screen === 'projects' && <ProjectsList goToProject={goToProject} role={role} setScreen={setScreen}/>}
+              {screen === 'projectDetail' && activeProject && <ProjectDetail projectId={activeProject} onBack={() => setScreen('projects')} role={role}/>}
+              {screen === 'schedule' && <ScheduleScreen role={role} goToProject={goToProject}/>}
+              {screen === 'hours' && <HoursScreen role={role}/>}
+              {screen === 'reports' && <ReportsScreen role={role}/>}
+              {screen === 'newProject' && <NewProjectScreen onDone={() => setScreen('projects')}/>}
+              {screen === 'users' && (
+                <div className="card card-pad-lg">
+                  <div className="card-title" style={{ marginBottom: 16 }}>Usuários da plataforma</div>
+                  <table className="tbl" style={{ margin: '-16px -20px -20px', width: 'calc(100% + 40px)' }}>
+                    <thead><tr><th>Pessoa</th><th>Papel</th><th>Departamento</th><th>E-mail</th><th>Projetos</th></tr></thead>
+                    <tbody>
+                      {PEOPLE.map(p => (
+                        <tr key={p.id}>
+                          <td><span className="row gap-3"><Avatar name={p.name}/><div><div className="fw-500 text-sm">{p.titulo ? `${p.titulo} ${p.name}` : p.name}</div><div className="text-xs muted">{p.curso || ''}</div></div></span></td>
+                          <td><span className="badge b-plan">{p.role}</span></td>
+                          <td className="text-xs">{p.dept}</td>
+                          <td className="text-xs muted">{p.email}</td>
+                          <td className="tnum text-xs">{PROJECTS.filter(pr => pr.teamIds.includes(p.id)).length}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          </div>
+          <MobileNav screen={screen} setScreen={(s) => { setScreen(s); setActiveProject(null); }} role={role}/>
+          <ToastHost/>
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+  </script>
+</body>
+</html>

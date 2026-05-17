@@ -1,0 +1,2 @@
+Fetch this design file, read its readme, and implement the relevant aspects of the design. https://api.anthropic.com/v1/design/h/-9D9kxtX4moEHi6fK2xjyQ?open_file=PesquisaHub.html
+Implement: PesquisaHub.html

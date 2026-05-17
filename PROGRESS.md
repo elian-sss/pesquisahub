@@ -121,21 +121,47 @@ Documento vivo. Atualizado a cada passo concluído. Última atualização: 2026-
 - O dropdown shadcn usa **base-ui** (não Radix). API levemente diferente: `DropdownMenuTrigger` aceita `className` direto e renderiza como `<button>` por default; **não tem `asChild`**.
 - Sidebar tem botão "Configurações" placeholder (disabled) — pode virar página de preferências mais tarde.
 
-## Fase 5 — Páginas e Server Actions
+## Fase 5 — Páginas e Server Actions ✅ CONCLUÍDA
 
-- [ ] `/dashboard` — server component que despacha por role
-- [ ] `components/dashboard/DashboardAdmin.tsx` (agregações `$group` por status/tipo/programa)
-- [ ] `components/dashboard/DashboardCoordenador.tsx` (% metas concluídas via `$unwind`+`$group`)
-- [ ] `components/dashboard/DashboardBolsista.tsx` (tarefas, horas do mês)
-- [ ] `/projetos` — lista com filtros via search params
-- [ ] `/projetos/[id]` — abas: Visão Geral, Cronograma, Horas, Arquivos, Equipe
-- [ ] `/projetos/novo` — multi-step com `MetadadosProgramaFields` (destaque da apresentação)
-- [ ] `/cronograma` — Gantt global (extra do design)
-- [ ] `/horas` — registro + aprovação
-- [ ] `/relatorios` — UI com dados mockados/agregação simples
-- [ ] `/usuarios` — tabela admin (extra do design)
-- [ ] Server Actions para mutações em `app/_actions/`
-- [ ] Toasts via sonner
+**Camada de dados** (`lib/queries/`):
+- [x] `dashboard.ts` — 6 agregações com comentários de índice: `getAdminKPIs`, `getProjetosPorTipo` ($group por tipo), `getProjetosPorStatus`, `getProjetosPorPrograma` ($group + $lookup com programas), `getUltimosProjetos`, `getProjetosDoCoordenador` (% metas via $unwind+$size+$filter), `getHorasPendentesDoCoordenador`, `getBolsistaResumo`
+- [x] `projetos.ts` — `listarProjetos` (com role-gating via "equipe.usuario_id") + `getProjetoPorId` via aggregation com $lookup populando programa e unidade
+- [x] `horas.ts` — `listarHoras` com role-gating (bolsista=próprias, coordenador=projetos que coordena)
+
+**Server Actions** (`lib/actions/`):
+- [x] `projetos.ts` — `criarProjeto` (valida via discriminated union + denormaliza nome do membro) + `atualizarStatusEntrega` (update aninhado com $[] arrayFilters)
+- [x] `horas.ts` — `registrarHoras` (auto status=pendente) + `aprovarRejeitarHoras` (verifica que coord é dono do projeto)
+
+**Componentes**:
+- [x] `KPI.tsx` — card serif com valor grande tnum, ícone, footer up/down
+- [x] `Charts.tsx` (client) — `BarChartCard` e `PieChartCard` com tooltip custom + paleta CHART_COLORS
+
+**Dashboards por role** (`components/dashboard/`):
+- [x] `DashboardAdmin.tsx` — 4 KPIs + bar chart (por programa) + pie (por tipo) + tabela últimos 8
+- [x] `DashboardCoordenador.tsx` — 4 KPIs + cards de meus projetos (com progress bar de metas) + pendências
+- [x] `DashboardBolsista.tsx` — 4 KPIs + card gradient com tarefas + lista de entregas
+
+**Páginas**:
+- [x] `/dashboard` — dispatcher por role
+- [x] `/projetos` — lista com filtros (tipo, status, busca) via searchParams + tabela responsiva
+- [x] `/projetos/[id]` — header + 5 abas em `_tabs/`: overview, cronograma, horas, arquivos, equipe
+- [x] `/projetos/[id]/_tabs/cronograma.tsx` + `entrega-toggle.tsx` (client) — toggle de status de entrega via Server Action
+- [x] `/projetos/novo` — server component carrega listas, passa para `NovoProjetoForm` (client)
+- [x] `/projetos/novo/novo-form.tsx` — **multi-step 5 passos** com stepper, validação de avanço, submit via Server Action
+- [x] `/projetos/novo/metadados-fields.tsx` — **DESTAQUE DA DEMO**: 6 implementações distintas (MonitoriaFields, PetFields, PiapeFields, PibicFields, EmbrapiiFields, OutroFields). Mudar o `tipo` no passo 1 troca completamente os campos no passo 3. Caso OUTRO tem aviso explicando passthrough/Mixed.
+- [x] `/cronograma` — pipeline `$unwind` em cronograma agrupa metas por mês
+- [x] `/horas` — split em registrar + lista; coord vê botões aprovar/rejeitar
+- [x] `/relatorios` — 3 cards de export (placeholders disabled) + 3 charts agregados
+- [x] `/usuarios` — tabela admin com avatares, contagem de projetos por usuário ($unwind equipe)
+
+**Verificação:**
+- [x] Type-check ✓ `npx tsc --noEmit`
+- [x] Build ✓ **11 rotas geradas**: `/`, `/_not-found`, `/api/auth/[...nextauth]`, `/cronograma`, `/dashboard`, `/horas`, `/login`, `/projetos`, `/projetos/[id]`, `/projetos/novo`, `/relatorios`, `/usuarios`
+
+**Notas:**
+- Páginas só vão **mostrar dados de verdade após Fase 6 (seed)** — por enquanto retornam tudo vazio com empty states amigáveis.
+- Cada agregação tem um comentário "Aproveita: { ... }" indicando o índice que está sendo usado (parte da nota da disciplina).
+- `metadados_programa` no banco é Mixed; nas tabs/dashboards é tipado como `Record<string, unknown>` para preservar a flexibilidade.
 
 ## Fase 6 — Seed
 
@@ -164,3 +190,4 @@ Documento vivo. Atualizado a cada passo concluído. Última atualização: 2026-
 - **2026-05-17** — Fase 2 concluída. 6 modelos Mongoose escritos com embeds, índices (incluindo sparse) e comentários de decisão. Singleton de conexão lazy. Tipo `MetadadosPrograma` como união discriminada por tipo de projeto. Type-check e build passaram.
 - **2026-05-17** — Fase 3 concluída. Zod validators (com `z.discriminatedUnion` em `projeto.ts`), NextAuth v5 split em config edge-safe + setup completo, helpers de sessão (`requireAuth`, `requireRole`), module augmentation de `Session/User/JWT`, route handler em `app/api/auth/[...nextauth]/route.ts`, middleware com proteção por role (ADMIN para `/usuarios`).
 - **2026-05-17** — Fase 4 concluída. Shell visual: Sidebar + Topbar + MobileNav + UserMenu + Avatar + StatusBadge + BrandMark. Tela de login (hero + form + 3 quick-access buttons) com Server Actions. Layout do dashboard protegido via `requireAuth`. Verificação visual: `/login` 200, `/dashboard` 307→login, `/` 307→login. Dev server testado, type-check ✓, build ✓.
+- **2026-05-17** — Fase 5 concluída. 8 páginas + 5 abas de detalhe + 3 dashboards por role + cadastro multi-step com `MetadadosProgramaFields` (6 variantes por tipo de projeto — o destaque da demo). Camada de queries com 6 agregações MongoDB comentando os índices que cada uma aproveita. Server Actions para criar projeto, marcar entrega concluída, registrar/aprovar horas. Build com 11 rotas. Próximo passo: seed para popular o banco e testar visualmente.

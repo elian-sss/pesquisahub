@@ -180,18 +180,37 @@ Documento vivo. Atualizado a cada passo concluído. Última atualização: 2026-
 - Fix de bug colateral: removidos `schema.index({ ... unique: true })` redundantes em 3 modelos onde o campo já tinha `unique: true` na declaração — eliminou warnings do Mongoose 9.
 - Senha única `pesquisahub2026` para todos os usuários do seed simplifica a demo. Em produção real seria por usuário.
 
-## Fase 7 — Polish
+## Fase 7 — Polish ✅ CONCLUÍDA
 
-- [ ] README com setup local + Docker + credenciais de seed + nota sobre "ref manual"
-- [ ] Empty states em listagens
-- [ ] Loading states
-- [ ] Responsividade 375px e 1280px
+- [x] **README.md** reescrito do zero: o que é, stack, estrutura de pastas, como rodar local (com Docker), credenciais de seed, comandos, variáveis de ambiente, **nota explícita sobre "ref manual" vs FK**, decisões de modelagem (embed vs ref) em formato de tabela, índices destacados (incluindo sparse), agregações comentando índices, e 4 pontos críticos para a apresentação.
+- [x] **`app/(dashboard)/loading.tsx`** — skeleton com 4 KPIs + card grande durante navegação entre páginas do dashboard (Next App Router pega automaticamente).
+- [x] **Empty states** já estavam embutidos nas páginas da Fase 5 (revisado — todos os listings têm mensagem amigável quando vazios).
+- [x] **Migração `middleware.ts` → `proxy.ts`** (Next 16 convention). Conteúdo idêntico, só o nome do arquivo mudou. Build limpo sem warning de deprecation.
 
----
+**Verificação end-to-end final** (dev server + sessão real via curl):
+
+| Rota (sessão COORDENADOR — Maria Silva) | Status |
+|---|---|
+| `/dashboard` | 200 ✓ — mostra "2 projetos ativos" (correto: MONITORIA + PIBIC) |
+| `/projetos` | 200 ✓ — lista filtrada por equipe.usuario_id (Maria só vê os 2 seus) |
+| `/cronograma` | 200 ✓ |
+| `/horas` | 200 ✓ |
+| `/relatorios` | 200 ✓ |
+| `/usuarios` (admin-only) | 307 → `/dashboard` ✓ role-gating funcionando |
+| `/projetos/[id]` (visão, cronograma, equipe) | 200 ✓ em todas as abas |
+| `/projetos/novo` | 200 ✓ |
+
+**Build final**: 11 rotas, sem warnings.
 
 ## Pendências / dúvidas em aberto
 
-- **Migrar `middleware.ts` → `proxy.ts`** (Next 16 deprecou o nome). Sem urgência; fazer ao final do projeto pra evitar mexer enquanto NextAuth ainda está sendo testado.
+(nenhuma — todas as fases concluídas)
+
+---
+
+## ~~Pendências antigas (resolvidas)~~
+
+- ~~Migrar `middleware.ts` → `proxy.ts`~~ — feito na Fase 7.
 
 ## Histórico de alterações
 
@@ -203,3 +222,4 @@ Documento vivo. Atualizado a cada passo concluído. Última atualização: 2026-
 - **2026-05-17** — Fase 4 concluída. Shell visual: Sidebar + Topbar + MobileNav + UserMenu + Avatar + StatusBadge + BrandMark. Tela de login (hero + form + 3 quick-access buttons) com Server Actions. Layout do dashboard protegido via `requireAuth`. Verificação visual: `/login` 200, `/dashboard` 307→login, `/` 307→login. Dev server testado, type-check ✓, build ✓.
 - **2026-05-17** — Fase 5 concluída. 8 páginas + 5 abas de detalhe + 3 dashboards por role + cadastro multi-step com `MetadadosProgramaFields` (6 variantes por tipo de projeto — o destaque da demo). Camada de queries com 6 agregações MongoDB comentando os índices que cada uma aproveita. Server Actions para criar projeto, marcar entrega concluída, registrar/aprovar horas. Build com 11 rotas. Próximo passo: seed para popular o banco e testar visualmente.
 - **2026-05-17** — Fase 6 concluída. `scripts/seed.ts` popula 6 coleções com dados realistas da UFOPA (3 unidades, 5 programas, 8 usuários com bcrypt, 6 projetos cobrindo todos os tipos, 25 horas, 5 arquivos). Removidos índices duplicados em 3 modelos. **Login testado via curl**: admin@ufopa.edu.br → dashboard retorna dados reais (6 projetos, 4 bolsistas distintos). MongoDB rodando via `docker compose`.
+- **2026-05-17** — Fase 7 (polish) concluída. README completo, loading.tsx no dashboard, migração `middleware.ts` → `proxy.ts` (Next 16). Smoke test end-to-end com sessão real de COORDENADOR: todas as 8 rotas + 5 abas do detalhe retornam 200; `/usuarios` corretamente redireciona não-admin para `/dashboard`. **Projeto pronto para entrega.**

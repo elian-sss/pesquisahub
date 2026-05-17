@@ -32,17 +32,24 @@ Documento vivo. Atualizado a cada passo concluído. Última atualização: 2026-
 - **Tailwind v4 usa configuração CSS-first** (`@theme inline` em `globals.css`), não `tailwind.config.ts`. Briefing pedia `tailwind.config.ts` — substituído pelo equivalente moderno.
 - **shadcn base color**: `stone` (default). As variáveis foram sobrescritas pelos tokens da paleta PesquisaHub no `globals.css`.
 
-## Fase 2 — Banco e modelos
+## Fase 2 — Banco e modelos ✅ CONCLUÍDA
 
-- [ ] `lib/db/connection.ts` com singleton Mongoose cacheado em `global`
-- [ ] `models/Usuario.ts` (com embeds: contato, endereco, dados_bancarios, academico, preferencias)
-- [ ] `models/Programa.ts` (com embeds: modalidades_bolsa, regulamento, contato_responsavel, requisitos)
-- [ ] `models/UnidadeAcademica.ts`
-- [ ] `models/Projeto.ts` (com embeds: vigencia, equipe, cronograma com entregas aninhadas, recursos; metadados_programa como Mixed)
-- [ ] `models/RegistroHoras.ts` (com embed aprovacao)
-- [ ] `models/Arquivo.ts` (com embeds metadata_arquivo, vinculado_a)
-- [ ] Índices em todos os schemas (incluindo sparse)
-- [ ] `types/index.ts` com enums e interfaces compartilhadas
+- [x] `lib/db/connection.ts` com singleton Mongoose cacheado em `global.mongooseCache` (sobrevive ao hot reload do dev). Lazy: só valida `MONGODB_URI` quando `connectMongo()` é chamado, não no import — assim o build sem `.env.local` continua passando.
+- [x] `types/index.ts` — enums como `const` arrays (ROLES, CATEGORIAS, TIPOS_PROJETO, STATUS_PROJETO, etc.) + tipos derivados via `(typeof X)[number]`. Plus a **união discriminada `MetadadosPrograma`** com 6 variantes (Monitoria, PET, PIAPE, PIBIC, Embrapii, Outro).
+- [x] `models/Usuario.ts` — embeds: contato, endereco, dados_bancarios, academico, preferencias. `senha_hash` com `select: false` (login precisa `.select('+senha_hash')`). Índices: email único, matricula sparse+único, role.
+- [x] `models/Programa.ts` — embeds: modalidades_bolsa (lista), regulamento, contato_responsavel, requisitos. Índices: sigla único, tipo+ativo.
+- [x] `models/UnidadeAcademica.ts` — enxuto. Índice único em sigla.
+- [x] `models/Projeto.ts` — embeds: vigencia (com prorrogações), equipe (com nome desnormalizado), cronograma (metas com entregas aninhadas, ambos com `_id` para serem alvo de referência), recursos. **`metadados_programa: Schema.Types.Mixed`** com tipo TS `MetadadosPrograma`. Índices: tipo+status, programa_id, unidade+campus, equipe.usuario_id, vigencia.fim+status, sigaa_id sparse, **2 índices sparse em metadados_programa** (unidade_demandante, semestre_letivo) — só pagam custo nos tipos que usam.
+- [x] `models/RegistroHoras.ts` — coleção própria (cresce sem limite por projeto), embed aprovacao. Índices: projeto+data, usuario+data, status+projeto.
+- [x] `models/Arquivo.ts` — coleção própria, embeds metadata_arquivo e vinculado_a. Índices: projeto+tipo_documento, vinculado_a.meta_id sparse.
+- [x] `models/index.ts` — barrel para registrar todos os modelos numa importação só.
+- [x] Comentários explicando decisões de embed/ref em cada modelo (parte da nota da disciplina).
+- [x] **Type-check limpo** (`npx tsc --noEmit`) ✓
+- [x] **Build limpo** (`npm run build` ✓ static gen 4/4)
+
+**Notas:**
+- Em Mongoose `Schema<T>` o tipo é o "shape" do documento sem `_id`. Para subdocs que precisam de `_id` próprio (Meta, Entrega), o `_id` está marcado `Types.ObjectId | undefined` na interface — Mongoose preenche automaticamente.
+- Nenhuma string "FK" / "foreign key" no código. Comentários usam **"ref manual"**.
 
 ## Fase 3 — Validação e autenticação
 
@@ -101,3 +108,5 @@ Documento vivo. Atualizado a cada passo concluído. Última atualização: 2026-
 
 - **2026-05-17** — Documento criado. Plano confirmado com o usuário. Iniciando Fase 1.
 - **2026-05-17** — Fase 1 concluída. Next 16.2.6 + Tailwind v4 + shadcn instalados, fontes carregadas, tokens do design aplicados, build de verificação passou. Pausando para validação antes da Fase 2.
+- **2026-05-17** — Repositório sincronizado com `https://github.com/elian-sss/pesquisahub.git`. Branch renomeada `master` → `main`. Commit da Fase 1 + commit inicial do create-next-app pushados. Política registrada em CLAUDE.md, BRIEFING.md e na memory: **nunca** adicionar footer `Co-Authored-By: Claude` em commits; pushes vão direto para `main` (sem PR).
+- **2026-05-17** — Fase 2 concluída. 6 modelos Mongoose escritos com embeds, índices (incluindo sparse) e comentários de decisão. Singleton de conexão lazy. Tipo `MetadadosPrograma` como união discriminada por tipo de projeto. Type-check e build passaram.

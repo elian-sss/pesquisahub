@@ -18,7 +18,7 @@ const unidadeAcademicaSchema = new Schema<UnidadeAcademica>(
   { collection: "unidades_academicas" },
 );
 
-unidadeAcademicaSchema.index({ sigla: 1 }, { unique: true });
+// sigla ja tem `unique: true` na declaracao do campo.
 
 export const UnidadeAcademicaModel: Model<UnidadeAcademica> =
   (models.UnidadeAcademica as Model<UnidadeAcademica>) ||

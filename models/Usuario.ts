@@ -124,7 +124,7 @@ const usuarioSchema = new Schema<Usuario>(
   },
 );
 
-usuarioSchema.index({ email: 1 }, { unique: true });
+// email ja tem `unique: true` na declaracao do campo (evita warning de duplicado).
 usuarioSchema.index({ matricula: 1 }, { sparse: true, unique: true });
 usuarioSchema.index({ role: 1 });
 

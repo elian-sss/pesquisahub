@@ -163,11 +163,22 @@ Documento vivo. Atualizado a cada passo concluído. Última atualização: 2026-
 - Cada agregação tem um comentário "Aproveita: { ... }" indicando o índice que está sendo usado (parte da nota da disciplina).
 - `metadados_programa` no banco é Mixed; nas tabs/dashboards é tipado como `Record<string, unknown>` para preservar a flexibilidade.
 
-## Fase 6 — Seed
+## Fase 6 — Seed ✅ CONCLUÍDA
 
-- [ ] `scripts/seed.ts` — 3 unidades, 5 programas, 8 usuários, 6 projetos, 20-30 registros de horas, 4-5 arquivos
-- [ ] Senhas hashadas + embeds preenchidos (contato, endereco, academico, preferencias)
-- [ ] Script `npm run seed` no `package.json`
+- [x] `scripts/seed.ts` — script idempotente que limpa as 6 coleções e popula:
+  - **3 unidades académicas** (ICED, IBEF, ICTA — todas Tapajós)
+  - **5 programas** com embeds completos (modalidades_bolsa, regulamento, contato_responsavel, requisitos): MON, PET-COMP, PIAPE, PIBIC, EMBRAPII
+  - **8 usuários** com senhas bcrypt (single password `pesquisahub2026` para demo): 1 ADMIN + 3 COORDENADOR + 4 BOLSISTA. Embeds `contato`, `endereco`, `academico` (lattes/orcid quando aplicável) e `preferencias` preenchidos. Credenciais de demo alinhadas com `lib/seed-credentials.ts`.
+  - **6 projetos** cobrindo todos os tipos (MONITORIA, PET, PIAPE, PIBIC, PD_EMBRAPII, OUTRO). Cada um com cronograma realista (3-4 metas com entregas), equipe (coord + bolsistas), `metadados_programa` específico do tipo, e recursos. O projeto EMBRAPII tem prorrogação registrada e marcos contratuais.
+  - **25 registros de horas** distribuídos entre os bolsistas, mistura aprovados e pendentes (com objeto `aprovacao` preenchido nos aprovados)
+  - **5 arquivos** com `metadata_arquivo` (hash, versão) e `tipo_documento` variados
+- [x] `npm run seed` usa `tsx --env-file=.env.local` (Node ≥ 20.6 + tsx 4.7+ suportam o flag, evita dependência extra de dotenv)
+- [x] **Seed executado com sucesso** contra MongoDB rodando via `docker compose up -d`. Sem warnings de Mongoose (índices duplicados removidos em Usuario/Programa/UnidadeAcademica — `unique: true` já no field declaration cobria).
+- [x] **Login programático testado**: CSRF → POST `/api/auth/callback/credentials` (admin@ufopa.edu.br + pesquisahub2026) → sessão estabelecida → GET `/dashboard` retorna 200 com **dados reais**: 6 projetos totais, 4 bolsistas distintos via agregação `$unwind`+`$group`.
+
+**Notas:**
+- Fix de bug colateral: removidos `schema.index({ ... unique: true })` redundantes em 3 modelos onde o campo já tinha `unique: true` na declaração — eliminou warnings do Mongoose 9.
+- Senha única `pesquisahub2026` para todos os usuários do seed simplifica a demo. Em produção real seria por usuário.
 
 ## Fase 7 — Polish
 
@@ -191,3 +202,4 @@ Documento vivo. Atualizado a cada passo concluído. Última atualização: 2026-
 - **2026-05-17** — Fase 3 concluída. Zod validators (com `z.discriminatedUnion` em `projeto.ts`), NextAuth v5 split em config edge-safe + setup completo, helpers de sessão (`requireAuth`, `requireRole`), module augmentation de `Session/User/JWT`, route handler em `app/api/auth/[...nextauth]/route.ts`, middleware com proteção por role (ADMIN para `/usuarios`).
 - **2026-05-17** — Fase 4 concluída. Shell visual: Sidebar + Topbar + MobileNav + UserMenu + Avatar + StatusBadge + BrandMark. Tela de login (hero + form + 3 quick-access buttons) com Server Actions. Layout do dashboard protegido via `requireAuth`. Verificação visual: `/login` 200, `/dashboard` 307→login, `/` 307→login. Dev server testado, type-check ✓, build ✓.
 - **2026-05-17** — Fase 5 concluída. 8 páginas + 5 abas de detalhe + 3 dashboards por role + cadastro multi-step com `MetadadosProgramaFields` (6 variantes por tipo de projeto — o destaque da demo). Camada de queries com 6 agregações MongoDB comentando os índices que cada uma aproveita. Server Actions para criar projeto, marcar entrega concluída, registrar/aprovar horas. Build com 11 rotas. Próximo passo: seed para popular o banco e testar visualmente.
+- **2026-05-17** — Fase 6 concluída. `scripts/seed.ts` popula 6 coleções com dados realistas da UFOPA (3 unidades, 5 programas, 8 usuários com bcrypt, 6 projetos cobrindo todos os tipos, 25 horas, 5 arquivos). Removidos índices duplicados em 3 modelos. **Login testado via curl**: admin@ufopa.edu.br → dashboard retorna dados reais (6 projetos, 4 bolsistas distintos). MongoDB rodando via `docker compose`.

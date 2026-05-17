@@ -100,7 +100,7 @@ const programaSchema = new Schema<Programa>(
   },
 );
 
-programaSchema.index({ sigla: 1 }, { unique: true });
+// sigla ja tem `unique: true` na declaracao do campo.
 programaSchema.index({ tipo: 1, ativo: 1 });
 
 export const ProgramaModel: Model<Programa> =

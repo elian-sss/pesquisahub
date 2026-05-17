@@ -82,15 +82,44 @@ Documento vivo. Atualizado a cada passo concluído. Última atualização: 2026-
 - **Aviso do Next 16**: `middleware.ts` está deprecated em favor de `proxy.ts`. Funciona normalmente; vou migrar quando o resto estiver estável (anotado abaixo).
 - Senha mínima = 8 chars no schema de criação. Usuários do seed serão criados respeitando isso.
 
-## Fase 4 — Shell visual
+## Fase 4 — Shell visual ✅ CONCLUÍDA
 
-- [ ] `(dashboard)/layout.tsx` — Sidebar + Topbar + MobileNav
-- [ ] `components/shared/Sidebar.tsx` (com logo marca quadrada `#0F4C5C` + bolinha âmbar)
-- [ ] `components/shared/Topbar.tsx` (com avatar, nome, role, logout)
-- [ ] `components/shared/BottomNav.tsx` (mobile)
-- [ ] `components/shared/StatusBadge.tsx`
-- [ ] `components/shared/Avatar.tsx`
-- [ ] `(auth)/login/page.tsx` (com 3 botões de acesso rápido)
+**Componentes compartilhados em `components/shared/`:**
+- [x] `BrandMark.tsx` — quadrado `#0F4C5C` com SVG da onda + bolinha âmbar via `::after` (CSS). Exporta também `BrandLogo` com subtítulo "UFOPA · 2026/1".
+- [x] `Avatar.tsx` — círculo com iniciais e cor hash-derivada da paleta (8 cores).
+- [x] `StatusBadge.tsx` — pílula com dot, 4 variantes (ok/warn/bad/plan) mapeadas para os status do domínio.
+- [x] `Sidebar.tsx` (client) — usa `usePathname` para active state, signOut do next-auth/react, lista filtrada por role; seção "Administração" só aparece para ADMIN.
+- [x] `MobileNav.tsx` (client) — bottom-nav, mesma lógica de active state.
+- [x] `UserMenu.tsx` (client) — dropdown (shadcn/base-ui) com nome, email e botão Sair.
+- [x] `Topbar.tsx` (client) — usa `usePathname` + `resolvePageTitle` para mostrar título/subtítulo certo por rota; UserMenu à direita.
+
+**Helpers:**
+- [x] `lib/ui-utils.ts` — `initials`, `avatarColor` (hash), `roleLabel`, `firstAndLast`.
+- [x] `lib/page-titles.ts` — mapa rota → `{title, sub(role)}` que muda conforme o papel.
+- [x] `lib/seed-credentials.ts` — `QUICK_LOGIN` com 3 entradas (admin/coord/bolsista) que **serão criadas no seed (Fase 6)**.
+
+**Layouts e páginas:**
+- [x] `app/(dashboard)/layout.tsx` — server, chama `requireAuth()`, renderiza Sidebar + Topbar + content + MobileNav.
+- [x] `app/(dashboard)/dashboard/page.tsx` — placeholder dando boas-vindas; dashboards reais na Fase 5.
+- [x] `app/(auth)/layout.tsx` — wrapper mínimo `<main>`.
+- [x] `app/(auth)/login/page.tsx` — server component: hero (gradient azul-petróleo + texto serif grande + 3 estatísticas) à esquerda + `LoginForm` à direita. No mobile (≤1023px) o hero some.
+- [x] `app/(auth)/login/login-form.tsx` (client) — formulário com email+senha (Server Action `loginAction`) + 3 botões de acesso rápido (Server Action `quickLoginAction(roleKey)`). Estado `pending` via `useTransition`, erros via `toast.error`.
+- [x] `app/(auth)/login/actions.ts` — Server Actions que chamam `signIn("credentials", ...)` com try/catch tratando `AuthError` (re-throw em outros casos pro Next processar o redirect).
+- [x] `app/page.tsx` — substitui o welcome do create-next-app; redirect para `/dashboard` ou `/login` baseado em sessão.
+
+**CSS:**
+- [x] Classes do design adicionadas em `app/globals.css`: `.app-shell`, `.sidebar*`, `.topbar*`, `.brand-mark`, `.nav-item.active`, `.profile-switcher`, `.avatar*`, `.status-badge*`, `.bottom-nav`, `.login-wrap`, `.login-hero` (com gradient e radial decorativo).
+
+**Verificação visual (dev server local):**
+- [x] `/login` retorna 200 com a tela renderizada corretamente (HTML inspecionado, contém hero, form, 3 quick-buttons com ícones lucide)
+- [x] `/dashboard` retorna 307 → `/login?redirectTo=%2Fdashboard` (middleware funcionando)
+- [x] `/` retorna 307 → `/login?redirectTo=%2F` (middleware antes mesmo do redirect server-side)
+- [x] Type-check ✓ e build ✓
+
+**Notas:**
+- O design tem um "ProfileSwitcher" que troca de role ao vivo (demo). No app real, eu substituí pelo `UserMenu` com botão Sair — a troca de role acontece de verdade via login na próxima sessão. A demo via 3 botões está na tela de login.
+- O dropdown shadcn usa **base-ui** (não Radix). API levemente diferente: `DropdownMenuTrigger` aceita `className` direto e renderiza como `<button>` por default; **não tem `asChild`**.
+- Sidebar tem botão "Configurações" placeholder (disabled) — pode virar página de preferências mais tarde.
 
 ## Fase 5 — Páginas e Server Actions
 
@@ -134,3 +163,4 @@ Documento vivo. Atualizado a cada passo concluído. Última atualização: 2026-
 - **2026-05-17** — Repositório sincronizado com `https://github.com/elian-sss/pesquisahub.git`. Branch renomeada `master` → `main`. Commit da Fase 1 + commit inicial do create-next-app pushados. Política registrada em CLAUDE.md, BRIEFING.md e na memory: **nunca** adicionar footer `Co-Authored-By: Claude` em commits; pushes vão direto para `main` (sem PR).
 - **2026-05-17** — Fase 2 concluída. 6 modelos Mongoose escritos com embeds, índices (incluindo sparse) e comentários de decisão. Singleton de conexão lazy. Tipo `MetadadosPrograma` como união discriminada por tipo de projeto. Type-check e build passaram.
 - **2026-05-17** — Fase 3 concluída. Zod validators (com `z.discriminatedUnion` em `projeto.ts`), NextAuth v5 split em config edge-safe + setup completo, helpers de sessão (`requireAuth`, `requireRole`), module augmentation de `Session/User/JWT`, route handler em `app/api/auth/[...nextauth]/route.ts`, middleware com proteção por role (ADMIN para `/usuarios`).
+- **2026-05-17** — Fase 4 concluída. Shell visual: Sidebar + Topbar + MobileNav + UserMenu + Avatar + StatusBadge + BrandMark. Tela de login (hero + form + 3 quick-access buttons) com Server Actions. Layout do dashboard protegido via `requireAuth`. Verificação visual: `/login` 200, `/dashboard` 307→login, `/` 307→login. Dev server testado, type-check ✓, build ✓.

@@ -51,13 +51,36 @@ Documento vivo. Atualizado a cada passo concluído. Última atualização: 2026-
 - Em Mongoose `Schema<T>` o tipo é o "shape" do documento sem `_id`. Para subdocs que precisam de `_id` próprio (Meta, Entrega), o `_id` está marcado `Types.ObjectId | undefined` na interface — Mongoose preenche automaticamente.
 - Nenhuma string "FK" / "foreign key" no código. Comentários usam **"ref manual"**.
 
-## Fase 3 — Validação e autenticação
+## Fase 3 — Validação e autenticação ✅ CONCLUÍDA
 
-- [ ] `lib/validators/usuario.ts`, `programa.ts`, `projeto.ts`, etc. (Zod)
-- [ ] `lib/validators/metadados-programa.ts` — **discriminated union** por tipo
-- [ ] `lib/auth/config.ts` — NextAuth v5 Credentials + bcrypt + JWT
-- [ ] `lib/auth/session.ts` — helpers de sessão tipados
-- [ ] `middleware.ts` — proteção de rotas por role
+**Zod validators em `lib/validators/`** (cada um exporta tipos via `z.infer`):
+- [x] `embeds.ts` — schemas reutilizáveis (Contato, Endereco, DadosBancarios, Academico, Preferencias, ModalidadeBolsa, Regulamento, ContatoResponsavel, Requisitos) + helper `objectIdString` (refine com `Types.ObjectId.isValid`)
+- [x] `usuario.ts` — `loginSchema`, `usuarioCreateSchema`, `usuarioUpdateSchema`
+- [x] `programa.ts` — create + update
+- [x] `unidade-academica.ts` — create
+- [x] `metadados-programa.ts` — 6 schemas (monitoria, PET, PIAPE, PIBIC, Embrapii, Outro com passthrough)
+- [x] `projeto.ts` — **`z.discriminatedUnion("tipo", [...])`** com 6 variantes; cada uma combina projetoBase + literal do tipo + schema correto de metadados
+- [x] `registro-horas.ts` — create + aprovação (com refine: status ≠ "pendente")
+- [x] `arquivo.ts` — create com embeds opcionais
+- [x] `index.ts` — barrel
+
+**Auth (NextAuth v5 / Auth.js):**
+- [x] `lib/auth/config.ts` — `authConfig` edge-safe: `pages.signIn=/login`, `session.strategy=jwt`, callbacks `jwt` e `session` propagando `role` e `usuario_id`. `providers: []` (preenchido na versão completa). Usa `satisfies NextAuthConfig`.
+- [x] `lib/auth/index.ts` — `NextAuth({ ...authConfig, providers: [Credentials({...})] })`. Authorize: valida com `loginSchema` → `connectMongo()` → `findOne` com `.select('+senha_hash')` → `bcrypt.compare`. Retorna `{ id, email, name, role, usuario_id }`.
+- [x] `lib/auth/session.ts` — helpers `getSession`, `getCurrentUser`, `requireAuth` (redirect /login), `requireRole` (redirect /dashboard se papel errado).
+- [x] `types/next-auth.d.ts` — module augmentation de `Session`, `User` e `JWT` com `role: Role` e `usuario_id: string`.
+- [x] `app/api/auth/[...nextauth]/route.ts` — exporta `GET` e `POST` dos handlers.
+
+**Middleware:**
+- [x] `middleware.ts` na raiz, usa `NextAuth(authConfig).auth` (importa só o config edge-safe — sem bcrypt/Mongoose, vital para o runtime edge). Lógica: redireciona não-autenticado → `/login` (com `?redirectTo`), autenticado em `/login` → `/dashboard`, e `/usuarios` exige `role===ADMIN`.
+
+**Verificação:**
+- [x] `npx tsc --noEmit` ✓
+- [x] `npm run build` ✓ (rotas geradas: `/`, `/_not-found`, `/api/auth/[...nextauth]`, Proxy/Middleware detectado)
+
+**Notas/desvios:**
+- **Aviso do Next 16**: `middleware.ts` está deprecated em favor de `proxy.ts`. Funciona normalmente; vou migrar quando o resto estiver estável (anotado abaixo).
+- Senha mínima = 8 chars no schema de criação. Usuários do seed serão criados respeitando isso.
 
 ## Fase 4 — Shell visual
 
@@ -102,7 +125,7 @@ Documento vivo. Atualizado a cada passo concluído. Última atualização: 2026-
 
 ## Pendências / dúvidas em aberto
 
-(nada por enquanto)
+- **Migrar `middleware.ts` → `proxy.ts`** (Next 16 deprecou o nome). Sem urgência; fazer ao final do projeto pra evitar mexer enquanto NextAuth ainda está sendo testado.
 
 ## Histórico de alterações
 
@@ -110,3 +133,4 @@ Documento vivo. Atualizado a cada passo concluído. Última atualização: 2026-
 - **2026-05-17** — Fase 1 concluída. Next 16.2.6 + Tailwind v4 + shadcn instalados, fontes carregadas, tokens do design aplicados, build de verificação passou. Pausando para validação antes da Fase 2.
 - **2026-05-17** — Repositório sincronizado com `https://github.com/elian-sss/pesquisahub.git`. Branch renomeada `master` → `main`. Commit da Fase 1 + commit inicial do create-next-app pushados. Política registrada em CLAUDE.md, BRIEFING.md e na memory: **nunca** adicionar footer `Co-Authored-By: Claude` em commits; pushes vão direto para `main` (sem PR).
 - **2026-05-17** — Fase 2 concluída. 6 modelos Mongoose escritos com embeds, índices (incluindo sparse) e comentários de decisão. Singleton de conexão lazy. Tipo `MetadadosPrograma` como união discriminada por tipo de projeto. Type-check e build passaram.
+- **2026-05-17** — Fase 3 concluída. Zod validators (com `z.discriminatedUnion` em `projeto.ts`), NextAuth v5 split em config edge-safe + setup completo, helpers de sessão (`requireAuth`, `requireRole`), module augmentation de `Session/User/JWT`, route handler em `app/api/auth/[...nextauth]/route.ts`, middleware com proteção por role (ADMIN para `/usuarios`).

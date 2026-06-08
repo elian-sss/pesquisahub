@@ -50,6 +50,7 @@ interface Entrega {
   descricao: string;
   status: StatusEntrega;
   responsavel_id?: Types.ObjectId;
+  // ref interna -> arquivos[]._id dentro deste mesmo projeto
   arquivo_id?: Types.ObjectId;
 }
 
@@ -74,6 +75,38 @@ interface Recursos {
   outros: RecursoExtra[];
 }
 
+interface MetadataArquivo {
+  hash_sha256?: string;
+  num_paginas?: number;
+  versao?: number;
+  // ref interna -> arquivos[]._id (chain de versionamento no mesmo projeto)
+  versao_anterior_id?: Types.ObjectId;
+}
+
+interface VinculadoA {
+  // referencias para subdocumentos do cronograma deste projeto
+  meta_id?: Types.ObjectId;
+  entrega_id?: Types.ObjectId;
+}
+
+// Antes era coleção própria; agora embedado no projeto a pedido da disciplina.
+// Mock guarda apenas metadados do arquivo (sem binario), entao o array fica
+// pequeno e limitado por projeto — embedding adequado neste caso.
+export interface ArquivoEmbed {
+  _id?: Types.ObjectId;
+  // ref manual -> usuarios (quem enviou)
+  enviado_por: Types.ObjectId;
+  nome: string;
+  tipo_documento: string;
+  mime_type: string;
+  tamanho_bytes: number;
+  url_storage: string;
+  metadata_arquivo?: MetadataArquivo;
+  vinculado_a?: VinculadoA;
+  tags?: string[];
+  enviado_em: Date;
+}
+
 export interface Projeto {
   titulo: string;
   descricao: string;
@@ -81,13 +114,16 @@ export interface Projeto {
   status: StatusProjeto;
   sigaa_id?: string;
   programa_id: Types.ObjectId;
-  unidade_academica_id: Types.ObjectId;
+  // Opcional: alguns tipos (PD_EMBRAPII) nao se vinculam a unidade academica.
+  unidade_academica_id?: Types.ObjectId;
   campus: string;
   vigencia: Vigencia;
   equipe: MembroEquipe[];
   cronograma: Meta[];
   metadados_programa: MetadadosPrograma;
   recursos: Recursos;
+  // Arquivos embedados (metadados de documentos do projeto).
+  arquivos: ArquivoEmbed[];
   criado_em: Date;
   atualizado_em: Date;
 }
@@ -164,6 +200,39 @@ const recursosSchema = new Schema<Recursos>(
   { _id: false },
 );
 
+const metadataArquivoSchema = new Schema<MetadataArquivo>(
+  {
+    hash_sha256: String,
+    num_paginas: Number,
+    versao: Number,
+    versao_anterior_id: { type: Schema.Types.ObjectId },
+  },
+  { _id: false },
+);
+
+const vinculadoASchema = new Schema<VinculadoA>(
+  {
+    meta_id: Schema.Types.ObjectId,
+    entrega_id: Schema.Types.ObjectId,
+  },
+  { _id: false },
+);
+
+// Arquivo embedado — _id proprio para ser referenciado por
+// cronograma.entregas.arquivo_id e por metadata_arquivo.versao_anterior_id.
+const arquivoSchema = new Schema<ArquivoEmbed>({
+  enviado_por: { type: Schema.Types.ObjectId, ref: "Usuario", required: true },
+  nome: { type: String, required: true },
+  tipo_documento: { type: String, required: true },
+  mime_type: { type: String, required: true },
+  tamanho_bytes: { type: Number, required: true },
+  url_storage: { type: String, required: true },
+  metadata_arquivo: metadataArquivoSchema,
+  vinculado_a: vinculadoASchema,
+  tags: { type: [String], default: undefined },
+  enviado_em: { type: Date, required: true, default: Date.now },
+});
+
 const projetoSchema = new Schema<Projeto>(
   {
     titulo: { type: String, required: true, trim: true },
@@ -173,10 +242,11 @@ const projetoSchema = new Schema<Projeto>(
     sigaa_id: String,
     // refs manuais
     programa_id: { type: Schema.Types.ObjectId, ref: "Programa", required: true },
+    // Opcional: PD_EMBRAPII nao se vincula a unidade academica (parceria com empresa).
+    // A obrigatoriedade por tipo e validada na camada Zod (discriminated union).
     unidade_academica_id: {
       type: Schema.Types.ObjectId,
       ref: "UnidadeAcademica",
-      required: true,
     },
     campus: { type: String, required: true },
     vigencia: { type: vigenciaSchema, required: true },
@@ -189,6 +259,8 @@ const projetoSchema = new Schema<Projeto>(
     // mantendo o documento aberto a evoluir sem migration.
     metadados_programa: { type: Schema.Types.Mixed, required: true },
     recursos: { type: recursosSchema, default: () => ({ outros: [] }) },
+    // arquivos embedados — leitura sempre acompanha o projeto.
+    arquivos: { type: [arquivoSchema], default: [] },
   },
   {
     timestamps: { createdAt: "criado_em", updatedAt: "atualizado_em" },
@@ -207,6 +279,11 @@ projetoSchema.index({ sigaa_id: 1 }, { sparse: true });
 // Indices sparse em campos de metadados_programa — so existem em alguns tipos.
 projetoSchema.index({ "metadados_programa.unidade_demandante": 1 }, { sparse: true });
 projetoSchema.index({ "metadados_programa.semestre_letivo": 1 }, { sparse: true });
+// Indices multikey sobre o array embedado de arquivos (substituem os da
+// antiga colecao arquivos). vinculado_a.meta_id e sparse: so alguns arquivos
+// estao amarrados a uma meta do cronograma.
+projetoSchema.index({ "arquivos.tipo_documento": 1 });
+projetoSchema.index({ "arquivos.vinculado_a.meta_id": 1 }, { sparse: true });
 
 export const ProjetoModel: Model<Projeto> =
   (models.Projeto as Model<Projeto>) || model<Projeto>("Projeto", projetoSchema);

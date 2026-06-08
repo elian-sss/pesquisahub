@@ -75,8 +75,17 @@ export function NovoProjetoForm({
 
   const canAdvance = () => {
     if (step === 0) return state.titulo.length >= 2 && state.descricao.length > 0 && state.tipo;
-    if (step === 1)
-      return state.programa_id && state.unidade_academica_id && state.vigencia_inicio && state.vigencia_fim;
+    if (step === 1) {
+      // PD_EMBRAPII dispensa unidade academica; os demais tipos exigem.
+      const unidadeOk =
+        state.tipo === "PD_EMBRAPII" || Boolean(state.unidade_academica_id);
+      return (
+        state.programa_id &&
+        unidadeOk &&
+        state.vigencia_inicio &&
+        state.vigencia_fim
+      );
+    }
     if (step === 2) return Object.keys(state.metadados).length > 0;
     if (step === 3) return state.equipe.length > 0;
     return true;
@@ -89,7 +98,8 @@ export function NovoProjetoForm({
         descricao: state.descricao,
         tipo: state.tipo,
         programa_id: state.programa_id,
-        unidade_academica_id: state.unidade_academica_id,
+        // Vazio vira undefined: PD_EMBRAPII pode nao ter unidade academica.
+        unidade_academica_id: state.unidade_academica_id || undefined,
         campus: state.campus,
         status: "planejado" as const,
         sigaa_id: state.sigaa_id || undefined,
@@ -307,6 +317,8 @@ function Step2({
   const programasFiltrados = state.tipo
     ? programas.filter((p) => p.tipo === state.tipo)
     : programas;
+  // PD_EMBRAPII (parceria com empresa) nao se vincula a unidade academica.
+  const unidadeOpcional = state.tipo === "PD_EMBRAPII";
   return (
     <div className="space-y-5">
       <SectionHeader
@@ -328,13 +340,18 @@ function Step2({
         </select>
       </Field>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <Field label="Unidade acadêmica *">
+        <Field
+          label={unidadeOpcional ? "Unidade acadêmica" : "Unidade acadêmica *"}
+          hint={unidadeOpcional ? "Opcional para EMBRAPII" : undefined}
+        >
           <select
             className={inputCls}
             value={state.unidade_academica_id}
             onChange={(e) => update("unidade_academica_id", e.target.value)}
           >
-            <option value="">Selecione</option>
+            <option value="">
+              {unidadeOpcional ? "Sem unidade acadêmica" : "Selecione"}
+            </option>
             {unidades.map((u) => (
               <option key={u._id} value={u._id}>
                 {u.sigla} — {u.nome}

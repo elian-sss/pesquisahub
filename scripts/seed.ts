@@ -12,8 +12,6 @@ import {
   ProgramaModel,
   UnidadeAcademicaModel,
   ProjetoModel,
-  RegistroHorasModel,
-  ArquivoModel,
 } from "@/models";
 import { QUICK_LOGIN, SEED_PASSWORD } from "@/lib/seed-credentials";
 
@@ -34,20 +32,22 @@ async function main() {
   await connectMongo();
 
   console.log("Limpando coleções...");
+  // registros_horas e arquivos agora vivem embedados em usuarios/projetos,
+  // entao limpar essas duas colecoes ja remove tudo.
   await Promise.all([
     UsuarioModel.deleteMany({}),
     ProgramaModel.deleteMany({}),
     UnidadeAcademicaModel.deleteMany({}),
     ProjetoModel.deleteMany({}),
-    RegistroHorasModel.deleteMany({}),
-    ArquivoModel.deleteMany({}),
   ]);
 
   // ========================================================
   // UNIDADES ACADEMICAS
   // ========================================================
   console.log("Inserindo unidades acadêmicas...");
-  const [iced, ibef, icta] = await UnidadeAcademicaModel.insertMany([
+  // ibef e omitido de propósito: o projeto PD_EMBRAPII demonstra o caso sem
+  // unidade academica (parceria com empresa nao se vincula a um instituto).
+  const [iced, , icta] = await UnidadeAcademicaModel.insertMany([
     { sigla: "ICED", nome: "Instituto de Ciências da Educação", campus: "Tapajós", tipo: "instituto" },
     { sigla: "IBEF", nome: "Instituto de Biodiversidade e Florestas", campus: "Tapajós", tipo: "instituto" },
     { sigla: "ICTA", nome: "Instituto de Engenharia e Geociências", campus: "Tapajós", tipo: "instituto" },
@@ -646,7 +646,7 @@ async function main() {
       status: "em_andamento",
       sigaa_id: "EMBRAPII-2024-AGUA",
       programa_id: embrapii._id,
-      unidade_academica_id: ibef._id,
+      // sem unidade_academica_id: PD_EMBRAPII nao se vincula a unidade academica.
       campus: "Tapajós",
       vigencia: {
         inicio: daysAgo(280),
@@ -776,7 +776,7 @@ async function main() {
   const [, projPet, , projPibic, projEmbrapii] = projetosInseridos;
 
   // ========================================================
-  // REGISTROS DE HORAS (25 — distribuidos)
+  // REGISTROS DE HORAS (26 — distribuidos, embedados em usuarios)
   // ========================================================
   console.log("Inserindo registros de horas...");
 
@@ -820,15 +820,34 @@ async function main() {
     { projeto: projetosInseridos[2]._id, usuario: juliana._id, dias: 5, horas: 4, atividade: "Oficina em Suruacá", tipo: "extensao" as const, aprovado: false },
   ];
 
-  await RegistroHorasModel.insertMany(
-    registrosBase.map((r) => ({
+  // Horas agora sao embedadas em usuarios.registros_horas[] (sem usuario_id:
+  // o dono e o documento pai). Agrupa por pessoa e grava o array de uma vez.
+  type RegistroSeed = {
+    _id: Types.ObjectId;
+    projeto_id: Types.ObjectId;
+    data: Date;
+    horas: number;
+    atividade: string;
+    tipo: (typeof tiposHoras)[number];
+    status: "aprovado" | "pendente";
+    criado_em: Date;
+    aprovacao?: {
+      aprovador_id: Types.ObjectId;
+      aprovado_em: Date;
+      observacao: string;
+    };
+  };
+  const registrosPorUsuario = new Map<string, RegistroSeed[]>();
+  for (const r of registrosBase) {
+    const registro = {
+      _id: oid(),
       projeto_id: r.projeto,
-      usuario_id: r.usuario,
       data: daysAgo(r.dias),
       horas: r.horas,
       atividade: r.atividade,
       tipo: r.tipo,
       status: r.aprovado ? ("aprovado" as const) : ("pendente" as const),
+      criado_em: daysAgo(r.dias),
       ...(r.aprovado && {
         aprovacao: {
           aprovador_id: maria._id, // simplificacao: maria aprova tudo
@@ -836,78 +855,125 @@ async function main() {
           observacao: "OK",
         },
       }),
-    })),
+    };
+    const key = String(r.usuario);
+    const lista = registrosPorUsuario.get(key) ?? [];
+    lista.push(registro);
+    registrosPorUsuario.set(key, lista);
+  }
+
+  await Promise.all(
+    [...registrosPorUsuario.entries()].map(([usuarioId, registros]) =>
+      UsuarioModel.updateOne(
+        { _id: new Types.ObjectId(usuarioId) },
+        { $set: { registros_horas: registros } },
+      ),
+    ),
   );
 
   // ========================================================
   // ARQUIVOS (5)
   // ========================================================
-  console.log("Inserindo arquivos...");
-  await ArquivoModel.insertMany([
+  console.log("Inserindo arquivos (embedados nos projetos)...");
+  // Arquivos agora vivem em projetos.arquivos[] (sem projeto_id: o dono e o
+  // documento pai). Cada arquivo recebe _id proprio e enviado_em.
+  await ProjetoModel.updateOne(
+    { _id: projPibic._id },
     {
-      projeto_id: projPibic._id,
-      enviado_por: joao._id,
-      nome: "plano_trabalho_pibic_joao.pdf",
-      tipo_documento: "plano_trabalho",
-      mime_type: "application/pdf",
-      tamanho_bytes: 245_678,
-      url_storage: "s3://pesquisahub/mock/plano-pibic.pdf",
-      metadata_arquivo: {
-        hash_sha256: "abc123def456",
-        num_paginas: 12,
-        versao: 1,
+      $set: {
+        arquivos: [
+          {
+            _id: oid(),
+            enviado_por: joao._id,
+            nome: "plano_trabalho_pibic_joao.pdf",
+            tipo_documento: "plano_trabalho",
+            mime_type: "application/pdf",
+            tamanho_bytes: 245_678,
+            url_storage: "s3://pesquisahub/mock/plano-pibic.pdf",
+            metadata_arquivo: {
+              hash_sha256: "abc123def456",
+              num_paginas: 12,
+              versao: 1,
+            },
+            enviado_em: daysAgo(110),
+          },
+          {
+            _id: oid(),
+            enviado_por: maria._id,
+            nome: "relatorio_parcial_pibic.pdf",
+            tipo_documento: "relatorio_parcial",
+            mime_type: "application/pdf",
+            tamanho_bytes: 1_245_000,
+            url_storage: "s3://pesquisahub/mock/rel-parcial-pibic.pdf",
+            metadata_arquivo: {
+              hash_sha256: "def456ghi789",
+              num_paginas: 24,
+              versao: 2,
+            },
+            enviado_em: daysAgo(8),
+          },
+        ],
       },
     },
+  );
+
+  await ProjetoModel.updateOne(
+    { _id: projEmbrapii._id },
     {
-      projeto_id: projPibic._id,
-      enviado_por: maria._id,
-      nome: "relatorio_parcial_pibic.pdf",
-      tipo_documento: "relatorio_parcial",
-      mime_type: "application/pdf",
-      tamanho_bytes: 1_245_000,
-      url_storage: "s3://pesquisahub/mock/rel-parcial-pibic.pdf",
-      metadata_arquivo: {
-        hash_sha256: "def456ghi789",
-        num_paginas: 24,
-        versao: 2,
+      $set: {
+        arquivos: [
+          {
+            _id: oid(),
+            enviado_por: carlos._id,
+            nome: "contrato_embrapii_amazontech.pdf",
+            tipo_documento: "contrato",
+            mime_type: "application/pdf",
+            tamanho_bytes: 890_000,
+            url_storage: "s3://pesquisahub/mock/contrato-embrapii.pdf",
+            metadata_arquivo: {
+              hash_sha256: "ghi789jkl012",
+              num_paginas: 18,
+              versao: 1,
+            },
+            enviado_em: daysAgo(270),
+          },
+          {
+            _id: oid(),
+            enviado_por: rafael._id,
+            nome: "schematic_sensor_v3.pdf",
+            tipo_documento: "documentacao_tecnica",
+            mime_type: "application/pdf",
+            tamanho_bytes: 3_400_000,
+            url_storage: "s3://pesquisahub/mock/schematic.pdf",
+            metadata_arquivo: { versao: 3 },
+            tags: ["hardware", "schematic"],
+            enviado_em: daysAgo(20),
+          },
+        ],
       },
     },
+  );
+
+  await ProjetoModel.updateOne(
+    { _id: projPet._id },
     {
-      projeto_id: projEmbrapii._id,
-      enviado_por: carlos._id,
-      nome: "contrato_embrapii_amazontech.pdf",
-      tipo_documento: "contrato",
-      mime_type: "application/pdf",
-      tamanho_bytes: 890_000,
-      url_storage: "s3://pesquisahub/mock/contrato-embrapii.pdf",
-      metadata_arquivo: {
-        hash_sha256: "ghi789jkl012",
-        num_paginas: 18,
-        versao: 1,
+      $set: {
+        arquivos: [
+          {
+            _id: oid(),
+            enviado_por: carlos._id,
+            nome: "relatorio_anual_pet_2025.pdf",
+            tipo_documento: "relatorio_final",
+            mime_type: "application/pdf",
+            tamanho_bytes: 2_100_000,
+            url_storage: "s3://pesquisahub/mock/relatorio-pet.pdf",
+            metadata_arquivo: { versao: 1, num_paginas: 42 },
+            enviado_em: daysAgo(15),
+          },
+        ],
       },
     },
-    {
-      projeto_id: projEmbrapii._id,
-      enviado_por: rafael._id,
-      nome: "schematic_sensor_v3.pdf",
-      tipo_documento: "documentacao_tecnica",
-      mime_type: "application/pdf",
-      tamanho_bytes: 3_400_000,
-      url_storage: "s3://pesquisahub/mock/schematic.pdf",
-      metadata_arquivo: { versao: 3 },
-      tags: ["hardware", "schematic"],
-    },
-    {
-      projeto_id: projPet._id,
-      enviado_por: carlos._id,
-      nome: "relatorio_anual_pet_2025.pdf",
-      tipo_documento: "relatorio_final",
-      mime_type: "application/pdf",
-      tamanho_bytes: 2_100_000,
-      url_storage: "s3://pesquisahub/mock/relatorio-pet.pdf",
-      metadata_arquivo: { versao: 1, num_paginas: 42 },
-    },
-  ]);
+  );
 
   console.log("\n✅ Seed concluído com sucesso!");
   console.log("\n📋 Credenciais de demo (todos com senha:", SEED_PASSWORD, "):");

@@ -73,13 +73,14 @@ const recursosSchema = z.object({
     .default([]),
 });
 
+// `unidade_academica_id` sai do base porque a obrigatoriedade varia por tipo:
+// PD_EMBRAPII (parceria com empresa) dispensa unidade academica; os demais exigem.
 const projetoBase = z.object({
   titulo: z.string().min(2),
   descricao: z.string().min(1),
   status: z.enum(STATUS_PROJETO).default("planejado"),
   sigaa_id: z.string().optional(),
   programa_id: objectIdString,
-  unidade_academica_id: objectIdString,
   campus: z.string().min(1),
   vigencia: vigenciaSchema,
   equipe: z.array(membroEquipeSchema).default([]),
@@ -87,31 +88,42 @@ const projetoBase = z.object({
   recursos: recursosSchema.default({ outros: [] }),
 });
 
+// Unidade obrigatoria para os tipos vinculados a uma unidade academica.
+const unidadeObrigatoria = { unidade_academica_id: objectIdString };
+// Unidade opcional apenas para PD_EMBRAPII.
+const unidadeOpcional = { unidade_academica_id: objectIdString.optional() };
+
 // Discriminated union conforme briefing: o `tipo` do projeto decide qual
 // forma de metadados_programa e aceita. Validacao acontece num passo so.
 export const projetoCreateSchema = z.discriminatedUnion("tipo", [
   projetoBase.extend({
     tipo: z.literal("MONITORIA"),
+    ...unidadeObrigatoria,
     metadados_programa: monitoriaMetadadosSchema,
   }),
   projetoBase.extend({
     tipo: z.literal("PET"),
+    ...unidadeObrigatoria,
     metadados_programa: petMetadadosSchema,
   }),
   projetoBase.extend({
     tipo: z.literal("PIAPE"),
+    ...unidadeObrigatoria,
     metadados_programa: piapeMetadadosSchema,
   }),
   projetoBase.extend({
     tipo: z.literal("PIBIC"),
+    ...unidadeObrigatoria,
     metadados_programa: pibicMetadadosSchema,
   }),
   projetoBase.extend({
     tipo: z.literal("PD_EMBRAPII"),
+    ...unidadeOpcional,
     metadados_programa: embrapiiMetadadosSchema,
   }),
   projetoBase.extend({
     tipo: z.literal("OUTRO"),
+    ...unidadeObrigatoria,
     metadados_programa: outroMetadadosSchema,
   }),
 ]);

@@ -1,7 +1,5 @@
-import { Types } from "mongoose";
 import { File } from "lucide-react";
-import { connectMongo } from "@/lib/db/connection";
-import { ArquivoModel } from "@/models/Arquivo";
+import type { ProjetoDetalhe } from "@/lib/queries/projetos";
 
 const fmtDate = (d: Date) =>
   new Date(d).toLocaleDateString("pt-BR", {
@@ -16,16 +14,9 @@ const fmtSize = (bytes: number) => {
   return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
 };
 
-export async function ArquivosTab({ projetoId }: { projetoId: string }) {
-  if (!Types.ObjectId.isValid(projetoId)) return null;
-  await connectMongo();
-  // Aproveita: { projeto_id: 1, tipo_documento: 1 }
-  const arquivos = await ArquivoModel.find({
-    projeto_id: new Types.ObjectId(projetoId),
-  })
-    .sort({ enviado_em: -1 })
-    .lean();
-
+// Arquivos agora vem embedados no projeto (carregados por getProjetoPorId),
+// entao a aba apenas recebe a lista ja ordenada por props — sem query propria.
+export function ArquivosTab({ arquivos }: { arquivos: ProjetoDetalhe["arquivos"] }) {
   if (arquivos.length === 0) {
     return (
       <div className="bg-white border rounded-xl p-12 text-center text-muted-foreground">
@@ -40,10 +31,15 @@ export async function ArquivosTab({ projetoId }: { projetoId: string }) {
     );
   }
 
+  // Mais recentes primeiro (a query antiga ordenava por enviado_em desc).
+  const ordenados = [...arquivos].sort(
+    (a, b) => new Date(b.enviado_em).getTime() - new Date(a.enviado_em).getTime(),
+  );
+
   return (
     <div className="bg-white border rounded-xl divide-y">
-      {arquivos.map((a) => (
-        <div key={String(a._id)} className="px-5 py-4 flex items-center gap-3">
+      {ordenados.map((a) => (
+        <div key={a._id} className="px-5 py-4 flex items-center gap-3">
           <File size={20} className="text-muted-foreground flex-shrink-0" />
           <div className="flex-1 min-w-0">
             <div className="font-medium text-sm truncate">{a.nome}</div>

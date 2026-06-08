@@ -9,7 +9,7 @@ import {
   registroHorasCreateSchema,
 } from "@/lib/validators/registro-horas";
 import { ProjetoModel } from "@/models/Projeto";
-import { RegistroHorasModel } from "@/models/RegistroHoras";
+import { UsuarioModel } from "@/models/Usuario";
 import type { ActionResult } from "./projetos";
 
 export async function registrarHoras(
@@ -25,19 +25,32 @@ export async function registrarHoras(
   }
 
   await connectMongo();
-  const created = await RegistroHorasModel.create({
-    ...parsed.data,
-    projeto_id: new Types.ObjectId(parsed.data.projeto_id),
-    meta_id: parsed.data.meta_id
-      ? new Types.ObjectId(parsed.data.meta_id)
-      : undefined,
-    usuario_id: new Types.ObjectId(user.usuario_id),
-    status: "pendente",
-  });
+  // Novo registro embedado em usuarios.registros_horas[] (sem usuario_id: e o pai).
+  const registroId = new Types.ObjectId();
+  await UsuarioModel.updateOne(
+    { _id: new Types.ObjectId(user.usuario_id) },
+    {
+      $push: {
+        registros_horas: {
+          _id: registroId,
+          projeto_id: new Types.ObjectId(parsed.data.projeto_id),
+          meta_id: parsed.data.meta_id
+            ? new Types.ObjectId(parsed.data.meta_id)
+            : undefined,
+          data: parsed.data.data,
+          horas: parsed.data.horas,
+          atividade: parsed.data.atividade,
+          tipo: parsed.data.tipo,
+          status: "pendente",
+          criado_em: new Date(),
+        },
+      },
+    },
+  );
 
   revalidatePath("/horas");
   revalidatePath("/dashboard");
-  return { ok: true, data: { id: String(created._id) } };
+  return { ok: true, data: { id: String(registroId) } };
 }
 
 export async function aprovarRejeitarHoras(
@@ -53,8 +66,14 @@ export async function aprovarRejeitarHoras(
 
   await connectMongo();
   const { registro_id, status, observacao } = parsed.data;
+  const registroOid = new Types.ObjectId(registro_id);
 
-  const registro = await RegistroHorasModel.findById(registro_id).lean();
+  // Localiza o usuario dono do registro embedado e projeta so o subdoc casado.
+  const dono = await UsuarioModel.findOne(
+    { "registros_horas._id": registroOid },
+    { "registros_horas.$": 1 },
+  ).lean();
+  const registro = dono?.registros_horas?.[0];
   if (!registro) return { ok: false, error: "Registro não encontrado." };
 
   // Coordenador so pode aprovar registros dos projetos que coordena.
@@ -76,12 +95,13 @@ export async function aprovarRejeitarHoras(
     }
   }
 
-  await RegistroHorasModel.updateOne(
-    { _id: new Types.ObjectId(registro_id) },
+  // Atualiza o subdoc casado via operador posicional `$`.
+  await UsuarioModel.updateOne(
+    { "registros_horas._id": registroOid },
     {
       $set: {
-        status,
-        aprovacao: {
+        "registros_horas.$.status": status,
+        "registros_horas.$.aprovacao": {
           aprovador_id: new Types.ObjectId(user.usuario_id),
           aprovado_em: new Date(),
           observacao,

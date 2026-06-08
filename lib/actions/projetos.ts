@@ -52,7 +52,11 @@ export async function criarProjeto(
   const created = await ProjetoModel.create({
     ...parsed.data,
     programa_id: new Types.ObjectId(parsed.data.programa_id),
-    unidade_academica_id: new Types.ObjectId(parsed.data.unidade_academica_id),
+    // PD_EMBRAPII pode nao ter unidade — converte so quando informada
+    // (new ObjectId(undefined) geraria um id aleatorio invalido).
+    unidade_academica_id: parsed.data.unidade_academica_id
+      ? new Types.ObjectId(parsed.data.unidade_academica_id)
+      : undefined,
     equipe: equipeComNome,
   });
 

@@ -1,8 +1,8 @@
 import { Types } from "mongoose";
 import { connectMongo } from "@/lib/db/connection";
-import { RegistroHorasModel } from "@/models/RegistroHoras";
 import { UsuarioModel } from "@/models/Usuario";
 import { StatusBadge } from "@/components/shared/StatusBadge";
+import type { StatusRegistroHoras, TipoHoras } from "@/types";
 
 const fmt = (d: Date) =>
   new Date(d).toLocaleDateString("pt-BR", {
@@ -11,21 +11,41 @@ const fmt = (d: Date) =>
     year: "numeric",
   });
 
+interface RegistroDoProjeto {
+  _id: string;
+  pessoa: string;
+  data: Date;
+  atividade: string;
+  tipo: TipoHoras;
+  horas: number;
+  status: StatusRegistroHoras;
+}
+
 export async function HorasTab({ projetoId }: { projetoId: string }) {
   if (!Types.ObjectId.isValid(projetoId)) return null;
   await connectMongo();
-  // Aproveita: { projeto_id: 1, data: -1 }
-  const registros = await RegistroHorasModel.find({
-    projeto_id: new Types.ObjectId(projetoId),
-  })
-    .sort({ data: -1 })
-    .limit(50)
-    .lean();
-  const usuarios = await UsuarioModel.find(
-    { _id: { $in: registros.map((r) => r.usuario_id) } },
-    { nome: 1 },
-  ).lean();
-  const nomePorId = new Map(usuarios.map((u) => [String(u._id), u.nome]));
+  const projetoOid = new Types.ObjectId(projetoId);
+  // Horas embedadas em usuarios: varre quem tem registro deste projeto e
+  // desdobra os apontamentos. Aproveita { "registros_horas.projeto_id": 1 }
+  // no $match inicial; o nome da pessoa vem do documento pai (sem lookup).
+  const registros = await UsuarioModel.aggregate<RegistroDoProjeto>([
+    { $match: { "registros_horas.projeto_id": projetoOid } },
+    { $unwind: "$registros_horas" },
+    { $match: { "registros_horas.projeto_id": projetoOid } },
+    { $sort: { "registros_horas.data": -1 } },
+    { $limit: 50 },
+    {
+      $project: {
+        _id: { $toString: "$registros_horas._id" },
+        pessoa: "$nome",
+        data: "$registros_horas.data",
+        atividade: "$registros_horas.atividade",
+        tipo: "$registros_horas.tipo",
+        horas: "$registros_horas.horas",
+        status: "$registros_horas.status",
+      },
+    },
+  ]);
 
   const total = registros.reduce((s, r) => s + r.horas, 0);
 
@@ -61,11 +81,9 @@ export async function HorasTab({ projetoId }: { projetoId: string }) {
             </thead>
             <tbody>
               {registros.map((r) => (
-                <tr key={String(r._id)} className="border-t border-line-2">
+                <tr key={r._id} className="border-t border-line-2">
                   <td className="px-4 py-3 text-xs">{fmt(r.data)}</td>
-                  <td className="px-4 py-3 text-xs">
-                    {nomePorId.get(String(r.usuario_id)) ?? "—"}
-                  </td>
+                  <td className="px-4 py-3 text-xs">{r.pessoa}</td>
                   <td className="px-4 py-3">{r.atividade}</td>
                   <td className="px-4 py-3 text-xs text-muted-foreground capitalize">
                     {r.tipo}

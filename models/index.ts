@@ -5,12 +5,8 @@ export { UsuarioModel } from "./Usuario";
 export { ProgramaModel } from "./Programa";
 export { UnidadeAcademicaModel } from "./UnidadeAcademica";
 export { ProjetoModel } from "./Projeto";
-export { RegistroHorasModel } from "./RegistroHoras";
-export { ArquivoModel } from "./Arquivo";
 
-export type { Usuario } from "./Usuario";
+export type { Usuario, RegistroHoras } from "./Usuario";
 export type { Programa } from "./Programa";
 export type { UnidadeAcademica } from "./UnidadeAcademica";
-export type { Projeto } from "./Projeto";
-export type { RegistroHoras } from "./RegistroHoras";
-export type { Arquivo } from "./Arquivo";
+export type { Projeto, ArquivoEmbed } from "./Projeto";

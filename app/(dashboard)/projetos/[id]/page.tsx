@@ -93,7 +93,7 @@ export default async function ProjetoPage({
           <CronogramaTab projeto={projeto} role={user.role} />
         )}
         {current === "horas" && <HorasTab projetoId={id} />}
-        {current === "arquivos" && <ArquivosTab projetoId={id} />}
+        {current === "arquivos" && <ArquivosTab arquivos={projeto.arquivos} />}
         {current === "equipe" && <EquipeTab projeto={projeto} />}
       </div>
     </div>

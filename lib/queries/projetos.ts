@@ -177,6 +177,24 @@ export interface ProjetoDetalhe {
     drive?: string;
     outros: Array<{ nome: string; url: string; tipo: string }>;
   };
+  arquivos: Array<{
+    _id: string;
+    enviado_por: string;
+    nome: string;
+    tipo_documento: string;
+    mime_type: string;
+    tamanho_bytes: number;
+    url_storage: string;
+    metadata_arquivo?: {
+      hash_sha256?: string;
+      num_paginas?: number;
+      versao?: number;
+      versao_anterior_id?: string;
+    };
+    vinculado_a?: { meta_id?: string; entrega_id?: string };
+    tags?: string[];
+    enviado_em: Date;
+  }>;
   criado_em: Date;
   atualizado_em: Date;
 }
@@ -270,6 +288,22 @@ export async function getProjetoPorId(
                       },
                     },
                   },
+                },
+              ],
+            },
+          },
+        },
+        // Arquivos embedados: converte _id e refs (ObjectId) para string.
+        arquivos: {
+          $map: {
+            input: { $ifNull: ["$arquivos", []] },
+            as: "a",
+            in: {
+              $mergeObjects: [
+                "$$a",
+                {
+                  _id: { $toString: "$$a._id" },
+                  enviado_por: { $toString: "$$a.enviado_por" },
                 },
               ],
             },

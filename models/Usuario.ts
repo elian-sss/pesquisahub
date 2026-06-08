@@ -1,5 +1,14 @@
 import { Schema, model, models, type Model, type Types } from "mongoose";
-import { CATEGORIAS, ROLES, type Categoria, type Role } from "@/types";
+import {
+  CATEGORIAS,
+  ROLES,
+  STATUS_REGISTRO_HORAS,
+  TIPOS_HORAS,
+  type Categoria,
+  type Role,
+  type StatusRegistroHoras,
+  type TipoHoras,
+} from "@/types";
 
 interface Contato {
   telefone?: string;
@@ -34,6 +43,30 @@ interface Preferencias {
   tema: "claro" | "escuro";
 }
 
+interface Aprovacao {
+  // ref manual -> usuarios (quem aprovou)
+  aprovador_id: Types.ObjectId;
+  aprovado_em: Date;
+  observacao?: string;
+}
+
+// Antes era coleção própria; agora embedado no usuário a pedido da disciplina.
+// _id proprio em cada registro permite aprovar/rejeitar um item via positional `$`.
+export interface RegistroHoras {
+  _id?: Types.ObjectId;
+  // ref manual -> projetos (registro pertence a um projeto)
+  projeto_id: Types.ObjectId;
+  // ref ao cronograma._id dentro do projeto (sem populate possivel)
+  meta_id?: Types.ObjectId;
+  data: Date;
+  horas: number;
+  atividade: string;
+  tipo: TipoHoras;
+  status: StatusRegistroHoras;
+  aprovacao?: Aprovacao;
+  criado_em: Date;
+}
+
 export interface Usuario {
   nome: string;
   email: string;
@@ -50,6 +83,8 @@ export interface Usuario {
   dados_bancarios?: DadosBancarios;
   academico?: Academico;
   preferencias?: Preferencias;
+  // Registros de horas embedados (historico de apontamentos da pessoa).
+  registros_horas: RegistroHoras[];
   criado_em: Date;
   atualizado_em: Date;
 }
@@ -100,6 +135,33 @@ const preferenciasSchema = new Schema<Preferencias>(
   { _id: false },
 );
 
+const aprovacaoSchema = new Schema<Aprovacao>(
+  {
+    aprovador_id: { type: Schema.Types.ObjectId, ref: "Usuario", required: true },
+    aprovado_em: { type: Date, required: true, default: Date.now },
+    observacao: String,
+  },
+  { _id: false },
+);
+
+// Registro de horas embedado — mantem _id proprio para aprovacao individual.
+// Trade-off assumido: o array e unbounded (cresce sem limite por pessoa);
+// embedado a pedido da disciplina para demonstrar embedding vs referencing.
+const registroHorasSchema = new Schema<RegistroHoras>(
+  {
+    projeto_id: { type: Schema.Types.ObjectId, ref: "Projeto", required: true },
+    meta_id: { type: Schema.Types.ObjectId },
+    data: { type: Date, required: true },
+    horas: { type: Number, required: true, min: 0 },
+    atividade: { type: String, required: true },
+    tipo: { type: String, enum: TIPOS_HORAS, required: true },
+    status: { type: String, enum: STATUS_REGISTRO_HORAS, default: "pendente" },
+    aprovacao: aprovacaoSchema,
+    criado_em: { type: Date, required: true, default: Date.now },
+  },
+  { _id: true },
+);
+
 const usuarioSchema = new Schema<Usuario>(
   {
     nome: { type: String, required: true, trim: true },
@@ -117,6 +179,7 @@ const usuarioSchema = new Schema<Usuario>(
     dados_bancarios: dadosBancariosSchema,
     academico: academicoSchema,
     preferencias: preferenciasSchema,
+    registros_horas: { type: [registroHorasSchema], default: [] },
   },
   {
     timestamps: { createdAt: "criado_em", updatedAt: "atualizado_em" },
@@ -127,6 +190,11 @@ const usuarioSchema = new Schema<Usuario>(
 // email ja tem `unique: true` na declaracao do campo (evita warning de duplicado).
 usuarioSchema.index({ matricula: 1 }, { sparse: true, unique: true });
 usuarioSchema.index({ role: 1 });
+// Indices multikey sobre o array embedado de horas. Substituem os indices
+// que viviam na antiga colecao registros_horas. Aproveitados nas agregacoes
+// de horas pendentes (por status) e por projeto (aba Horas / dashboard).
+usuarioSchema.index({ "registros_horas.projeto_id": 1 });
+usuarioSchema.index({ "registros_horas.status": 1 });
 
 export const UsuarioModel: Model<Usuario> =
   (models.Usuario as Model<Usuario>) || model<Usuario>("Usuario", usuarioSchema);

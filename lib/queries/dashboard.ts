@@ -2,7 +2,7 @@ import "server-only";
 import { Types } from "mongoose";
 import { connectMongo } from "@/lib/db/connection";
 import { ProjetoModel } from "@/models/Projeto";
-import { RegistroHorasModel } from "@/models/RegistroHoras";
+import { UsuarioModel } from "@/models/Usuario";
 import type { StatusProjeto, TipoProjeto } from "@/types";
 
 // ============================================================
@@ -239,8 +239,9 @@ export async function getHorasPendentesDoCoordenador(
 ): Promise<PendenciaHoras> {
   await connectMongo();
   // 1) Pega projetos do coordenador
-  // 2) Busca registros pendentes nesses projetos
-  // Aproveita { "equipe.usuario_id": 1 } e { status: 1, projeto_id: 1 } em registros.
+  // 2) Conta registros pendentes embedados em usuarios cujo projeto_id esteja nesses projetos
+  // Aproveita { "equipe.usuario_id": 1 } em projetos e
+  // { "registros_horas.status": 1 } / { "registros_horas.projeto_id": 1 } em usuarios.
   const projetos = await ProjetoModel.find(
     {
       equipe: {
@@ -255,17 +256,20 @@ export async function getHorasPendentesDoCoordenador(
 
   if (projetos.length === 0) return { total: 0, por_projeto: [] };
 
-  const pendentes = await RegistroHorasModel.aggregate<{
+  const projetoIds = projetos.map((p) => p._id);
+  const pendentes = await UsuarioModel.aggregate<{
     _id: Types.ObjectId;
     count: number;
   }>([
+    { $match: { "registros_horas.projeto_id": { $in: projetoIds } } },
+    { $unwind: "$registros_horas" },
     {
       $match: {
-        status: "pendente",
-        projeto_id: { $in: projetos.map((p) => p._id) },
+        "registros_horas.status": "pendente",
+        "registros_horas.projeto_id": { $in: projetoIds },
       },
     },
-    { $group: { _id: "$projeto_id", count: { $sum: 1 } } },
+    { $group: { _id: "$registros_horas.projeto_id", count: { $sum: 1 } } },
   ]);
 
   const mapTitulo = new Map(projetos.map((p) => [String(p._id), p.titulo]));
@@ -302,16 +306,18 @@ export async function getBolsistaResumo(usuarioId: string): Promise<BolsistaResu
   inicio_mes.setDate(1);
   inicio_mes.setHours(0, 0, 0, 0);
 
-  // Horas do mes — aproveita { usuario_id: 1, data: -1 }.
-  const [horas] = await RegistroHorasModel.aggregate<{ total: number }>([
+  // Horas do mes — desdobra registros_horas embedados do proprio usuario.
+  // Match por _id le so o documento da pessoa; $unwind expande os apontamentos.
+  const [horas] = await UsuarioModel.aggregate<{ total: number }>([
+    { $match: { _id: id } },
+    { $unwind: "$registros_horas" },
     {
       $match: {
-        usuario_id: id,
-        data: { $gte: inicio_mes },
-        status: { $in: ["pendente", "aprovado"] },
+        "registros_horas.data": { $gte: inicio_mes },
+        "registros_horas.status": { $in: ["pendente", "aprovado"] },
       },
     },
-    { $group: { _id: null, total: { $sum: "$horas" } } },
+    { $group: { _id: null, total: { $sum: "$registros_horas.horas" } } },
   ]);
 
   // Projetos do bolsista — aproveita { "equipe.usuario_id": 1 }
